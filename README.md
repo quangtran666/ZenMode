@@ -146,4 +146,71 @@ ZenMode operates completely locally on your browser. No data is sent to any exte
 
 ## 📝 License
 
-MIT License 
+MIT License
+
+## Testing
+
+ZenMode includes a comprehensive test suite built with Jest. These tests help ensure that the extension's functionality works correctly and prevents regressions when making changes.
+
+### Running Tests
+
+To run the tests:
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode (development)
+npm run test:watch
+```
+
+### Test Structure
+
+Tests are organized in the `src/__tests__` directory, which mirrors the structure of the source code:
+
+- `src/__tests__/utils/` - Tests for utility functions
+- `src/__tests__/background/` - Tests for background script functionality 
+- `src/__tests__/popup/` - Tests for popup UI functionality
+
+### Writing New Tests
+
+When adding a new feature or modifying existing functionality, please add or update the corresponding tests. Here's a basic example of how to write a test:
+
+```typescript
+/**
+ * @jest-environment jsdom
+ */
+/// <reference types="jest" />
+
+import { featureToTest } from '../../path/to/feature';
+
+describe('Feature description', () => {
+  beforeEach(() => {
+    // Setup code
+  });
+
+  it('should do something specific', () => {
+    // Arrange
+    const input = 'something';
+    
+    // Act
+    const result = featureToTest(input);
+    
+    // Assert
+    expect(result).toBe('expected output');
+  });
+});
+```
+
+### Mocking Chrome APIs
+
+Chrome extension APIs are not available in the Jest test environment, so we need to mock them. The `jest.setup.js` file provides basic mocks for many Chrome APIs, but you may need to extend these for specific tests:
+
+```typescript
+// Example of mocking chrome.storage.local for a specific test
+beforeEach(() => {
+  chrome.storage.local.get = jest.fn().mockImplementation((key, callback) => {
+    callback({ key: 'mockValue' });
+  });
+});
+``` 

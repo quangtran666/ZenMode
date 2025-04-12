@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && node scripts/fix-html-paths.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "keywords": [
     "chrome-extension",
@@ -16,9 +18,12 @@
   "license": "MIT",
   "devDependencies": {
     "@types/chrome": "^0.0.246",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.8.2",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "ts-jest": "^29.3.1",
     "typescript": "^5.2.2",
     "vite": "^4.4.11"
-  },
-  "dependencies": {}
-} 
+  }
+}
