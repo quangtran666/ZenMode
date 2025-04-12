@@ -100,8 +100,18 @@ input:checked + .slider:before {
   transform: translateX(24px);
 }
 
+/* State change feedback */
+.state-changed .slider {
+  box-shadow: 0 0 8px var(--primary-color);
+}
+
+.state-changed input:checked + .slider {
+  background-color: var(--success-color);
+}
+
 #status-text {
   font-size: 14px;
+  transition: color 0.3s;
 }
 
 /* Timer Section */
@@ -205,6 +215,23 @@ select, input[type="text"] {
 
 .volume-icon {
   font-size: 18px;
+}
+
+/* Active sound styling */
+.active-sound {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 4px rgba(74, 111, 165, 0.4);
+}
+
+/* Volume icon animation when sound is playing */
+.pulsing {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
 .hidden {

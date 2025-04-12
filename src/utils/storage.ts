@@ -165,6 +165,7 @@ export const completeCurrentSession = async (): Promise<ZenModeState> => {
   
   const updatedState: ZenModeState = {
     ...state,
+    isActive: false,
     currentSession: undefined,
     history: [...state.history, completedSession]
   };
@@ -178,6 +179,7 @@ export const toggleZenMode = async (isActive?: boolean): Promise<ZenModeState> =
   const state = await loadState();
   
   const newActive = isActive !== undefined ? isActive : !state.isActive;
+  console.log(`toggleZenMode called with isActive=${isActive}, current=${state.isActive}, new=${newActive}`);
   
   let updatedState: ZenModeState = {
     ...state,
@@ -194,6 +196,8 @@ export const toggleZenMode = async (isActive?: boolean): Promise<ZenModeState> =
   } else if (!newActive && state.currentSession) {
     // Complete the session when deactivating
     updatedState = await completeCurrentSession();
+    // Ensure isActive is set correctly in case completeCurrentSession changes it
+    updatedState.isActive = newActive;
   }
   
   await saveState(updatedState);

@@ -64,12 +64,34 @@ function updateUI() {
   soundSelect.value = soundSettings.type;
   volumeControl.value = soundSettings.volume.toString();
   toggleSoundBtn.textContent = soundSettings.isPlaying ? 'Stop' : 'Play';
+  toggleSoundBtn.disabled = false;
   
   if (soundSettings.type === 'custom' && soundSettings.customUrl) {
     customSoundUrl.value = soundSettings.customUrl;
     customSoundUrl.classList.remove('hidden');
   } else {
     customSoundUrl.classList.add('hidden');
+  }
+  
+  // Update visual cues for sound playing
+  if (soundSettings.isPlaying) {
+    soundSelect.classList.add('active-sound');
+    volumeControl.classList.add('active-sound');
+    
+    // Add animation to volume icon
+    const volumeIcon = document.querySelector('.volume-icon');
+    if (volumeIcon) {
+      volumeIcon.classList.add('pulsing');
+    }
+  } else {
+    soundSelect.classList.remove('active-sound');
+    volumeControl.classList.remove('active-sound');
+    
+    // Remove animation from volume icon
+    const volumeIcon = document.querySelector('.volume-icon');
+    if (volumeIcon) {
+      volumeIcon.classList.remove('pulsing');
+    }
   }
   
   // Update stats
@@ -179,21 +201,24 @@ function updateStats() {
 
 // Setup event listeners
 function setupEventListeners() {
-  // ZenMode toggle - completely fresh approach
+  // ZenMode toggle - direct implementation that fixes double-click issue
   const switchEl = document.querySelector('.switch') as HTMLLabelElement;
+  const toggleCheckbox = zenModeToggle; // Use the direct reference to the checkbox
   
-  if (switchEl) {
-    // Clone and replace to remove any existing listeners
-    const newSwitch = switchEl.cloneNode(true) as HTMLLabelElement;
-    switchEl.parentNode?.replaceChild(newSwitch, switchEl);
+  if (switchEl && toggleCheckbox) {
+    // Remove default click handlers from both the switch and checkbox
+    switchEl.onclick = null;
+    toggleCheckbox.onclick = null;
     
-    // Get the new checkbox reference but don't try to reassign zenModeToggle
-    const newCheckbox = newSwitch.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    // Stop the default checkbox behavior completely
+    toggleCheckbox.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      return false;
+    });
     
-    // Update our zenModeToggle reference for future use by using newCheckbox directly in functions
-    // Create our custom click handler on the switch
-    newSwitch.onclick = function(event) {
-      // Prevent default toggle behavior
+    // Add click handler to the switch
+    switchEl.addEventListener('click', function(event) {
       event.preventDefault();
       event.stopPropagation();
       
@@ -206,67 +231,110 @@ function setupEventListeners() {
       
       // Get current state from appState (the source of truth)
       const currentState = appState.isActive;
+      handleZenModeToggle(currentState);
+    });
+    
+    // Also handle direct clicks on the checkbox itself
+    toggleCheckbox.addEventListener('change', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
       
-      // If currently on, need to verify before turning off
-      if (currentState) {
-        console.log("Currently ON, attempting to turn OFF");
-        
-        // Check if passcode verification is needed
-        if (appState.settings.passcodeEnabled) {
-          const passcode = prompt('Enter passcode to exit ZenMode:');
-          if (passcode !== appState.settings.passcode) {
-            alert('Incorrect passcode. Stay focused!');
-            return; // Keep ZenMode on
-          }
-        } 
-        // Check if puzzle verification is needed
-        else if (appState.settings.usePuzzleInsteadOfPasscode) {
-          const num1 = Math.floor(Math.random() * 20) + 1;
-          const num2 = Math.floor(Math.random() * 20) + 1;
-          const operation = Math.random() > 0.5 ? '+' : '*';
-          const correctAnswer = operation === '+' ? num1 + num2 : num1 * num2;
-          
-          const userAnswer = prompt(`Solve this puzzle to exit ZenMode:\n${num1} ${operation} ${num2} = ?`);
-          if (!userAnswer || parseInt(userAnswer) !== correctAnswer) {
-            alert('Incorrect answer. Stay focused!');
-            return; // Keep ZenMode on
-          }
-        }
-        
-        // Passed verification, turn off
-        setZenModeState(false, newCheckbox);
-      } else {
-        // Turn on (no verification needed)
-        console.log("Currently OFF, turning ON");
-        setZenModeState(true, newCheckbox);
+      console.log("Checkbox changed directly");
+      
+      if (!appState) {
+        console.error("Cannot toggle: App state is null");
+        return;
       }
       
-      return false; // Prevent default
-    };
+      // Get current state from appState (the source of truth)
+      const currentState = appState.isActive;
+      handleZenModeToggle(currentState);
+      
+      return false;
+    });
+  }
+  
+  // Handle the toggle logic in a separate function for reuse
+  function handleZenModeToggle(currentState: boolean) {
+    // If currently on, need to verify before turning off
+    if (currentState) {
+      console.log("Currently ON, attempting to turn OFF");
+      
+      if (!appState) {
+        console.error("State is null when attempting to toggle ZenMode");
+        return;
+      }
+      
+      // Check if passcode verification is needed
+      if (appState.settings.passcodeEnabled) {
+        const passcode = prompt('Enter passcode to exit ZenMode:');
+        if (passcode !== appState.settings.passcode) {
+          alert('Incorrect passcode. Stay focused!');
+          return; // Keep ZenMode on
+        }
+      } 
+      // Check if puzzle verification is needed
+      else if (appState.settings.usePuzzleInsteadOfPasscode) {
+        const num1 = Math.floor(Math.random() * 20) + 1;
+        const num2 = Math.floor(Math.random() * 20) + 1;
+        const operation = Math.random() > 0.5 ? '+' : '*';
+        const correctAnswer = operation === '+' ? num1 + num2 : num1 * num2;
+        
+        const userAnswer = prompt(`Solve this puzzle to exit ZenMode:\n${num1} ${operation} ${num2} = ?`);
+        if (!userAnswer || parseInt(userAnswer) !== correctAnswer) {
+          alert('Incorrect answer. Stay focused!');
+          return; // Keep ZenMode on
+        }
+      }
+      
+      // Passed verification, turn off
+      setZenModeState(false);
+    } else {
+      // Turn on (no verification needed)
+      console.log("Currently OFF, turning ON");
+      setZenModeState(true);
+    }
   }
   
   // Helper function to set ZenMode state
-  function setZenModeState(state: boolean, checkboxEl: HTMLInputElement) {
+  function setZenModeState(state: boolean) {
     console.log(`Setting ZenMode to: ${state}`);
     
-    // Update UI first
-    checkboxEl.checked = state;
-    statusText.textContent = state ? 'ZenMode is on' : 'ZenMode is off';
+    // Show loading state
+    statusText.textContent = state ? 'Turning on...' : 'Turning off...';
+    toggleCheckbox.disabled = true; // Disable during transition
     
     // Then send message to update backend
     chrome.runtime.sendMessage({
       type: 'TOGGLE_ZEN_MODE',
       payload: { isActive: state }
     }, (response) => {
+      toggleCheckbox.disabled = false; // Re-enable
+      
       if (response && response.success) {
         // Update local state
         appState = response.state;
+        
+        // Make sure UI is updated based on the returned state, not what we set
+        if (appState) {
+          const actualState = appState.isActive;
+          toggleCheckbox.checked = actualState;
+          statusText.textContent = actualState ? 'ZenMode is on' : 'ZenMode is off';
+          
+          // Add some visual feedback to show the state change was successful
+          switchEl.classList.add('state-changed');
+          setTimeout(() => {
+            switchEl.classList.remove('state-changed');
+          }, 300);
+          
+          console.log(`ZenMode is now: ${actualState ? 'ON' : 'OFF'}`);
+        }
+        
         updateUI();
-        console.log(`ZenMode ${state ? 'activated' : 'deactivated'} successfully`);
       } else {
         // Revert UI on error
-        console.error("Failed to update ZenMode state");
-        checkboxEl.checked = !state;
+        console.error("Failed to update ZenMode state:", response);
+        toggleCheckbox.checked = !state;
         statusText.textContent = !state ? 'ZenMode is on' : 'ZenMode is off';
       }
     });
@@ -485,6 +553,10 @@ function setupEventListeners() {
     
     const isPlaying = appState.settings.sound.isPlaying;
     
+    // Show loading state
+    toggleSoundBtn.textContent = isPlaying ? 'Stopping...' : 'Loading...';
+    toggleSoundBtn.disabled = true;
+    
     chrome.runtime.sendMessage({ 
       type: isPlaying ? 'STOP_SOUND' : 'PLAY_SOUND',
       payload: isPlaying ? undefined : {
@@ -492,21 +564,56 @@ function setupEventListeners() {
         volume: appState.settings.sound.volume,
         customUrl: appState.settings.sound.customUrl
       }
-    }, () => {
-      // Update sound playing state
-      chrome.runtime.sendMessage({ 
-        type: 'UPDATE_SETTINGS',
-        payload: { 
-          sound: { 
-            isPlaying: !isPlaying
+    }, (response) => {
+      // Check if the sound operation was successful
+      if (response && response.success) {
+        // Update sound playing state
+        chrome.runtime.sendMessage({ 
+          type: 'UPDATE_SETTINGS',
+          payload: { 
+            sound: { 
+              isPlaying: !isPlaying
+            }
           }
-        }
-      }, (response) => {
-        if (response && response.success) {
-          appState = response.state;
-          toggleSoundBtn.textContent = !isPlaying ? 'Stop' : 'Play';
-        }
-      });
+        }, (response) => {
+          if (response && response.success) {
+            appState = response.state;
+            toggleSoundBtn.textContent = !isPlaying ? 'Stop' : 'Play';
+            
+            // Visual feedback for sound playing
+            if (!isPlaying) {
+              // Sound started playing
+              soundSelect.classList.add('active-sound');
+              volumeControl.classList.add('active-sound');
+              
+              // Add animation to volume icon
+              const volumeIcon = document.querySelector('.volume-icon');
+              if (volumeIcon) {
+                volumeIcon.classList.add('pulsing');
+              }
+            } else {
+              // Sound stopped
+              soundSelect.classList.remove('active-sound');
+              volumeControl.classList.remove('active-sound');
+              
+              // Remove animation from volume icon
+              const volumeIcon = document.querySelector('.volume-icon');
+              if (volumeIcon) {
+                volumeIcon.classList.remove('pulsing');
+              }
+            }
+          }
+          
+          // Re-enable button
+          toggleSoundBtn.disabled = false;
+        });
+      } else {
+        // Error occurred
+        console.error('Error controlling sound');
+        alert('There was an error playing the selected sound');
+        toggleSoundBtn.textContent = 'Play';
+        toggleSoundBtn.disabled = false;
+      }
     });
   });
   
