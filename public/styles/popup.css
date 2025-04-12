@@ -129,15 +129,36 @@ h2 {
   color: var(--primary-color);
 }
 
+/* Timer Display */
 .timer-display {
   display: flex;
   justify-content: center;
-  margin: 16px 0;
+  margin: 20px 0;
+  background-color: #f9f9f9;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #eaeaea;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.timer-display-inner {
+  text-align: center;
+}
+
+.timer-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
 #timer-value {
-  font-size: 36px;
+  font-size: 40px;
   font-weight: 700;
+  color: #333;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.1);
 }
 
 .timer-controls input[type="range"] {
@@ -289,4 +310,132 @@ footer {
 
 .icon-button:hover {
   color: var(--primary-color);
+}
+
+/* Timer Tabs */
+.timer-tabs {
+  display: flex;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--light-gray);
+  position: relative;
+  z-index: 100 !important;
+}
+
+.timer-tab {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--dark-gray);
+  cursor: pointer !important;
+  transition: all 0.2s;
+  flex: 1;
+  z-index: 101 !important;
+  position: relative;
+}
+
+.timer-tab:hover {
+  color: var(--primary-color);
+}
+
+.timer-tab.active {
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--primary-color);
+  font-weight: 500;
+}
+
+.timer-tab[disabled] {
+  opacity: 1 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+.stopwatch-message {
+  text-align: center;
+  padding: 8px 0;
+  color: var(--dark-gray);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+/* Disabled timer section when ZenMode is off */
+.disabled-section {
+  opacity: 0.6;
+  position: relative;
+}
+
+.disabled-section::before {
+  content: "Bật ZenMode để sử dụng timer";
+  position: absolute;
+  top: 38px;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 38px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.8);
+  color: var(--primary-color);
+  font-weight: 500;
+  font-size: 16px;
+  z-index: 5;
+  border-radius: 0 0 8px 8px;
+  pointer-events: none;
+}
+
+.disabled-section input[type="range"],
+.disabled-section button:not(.timer-tab) {
+  pointer-events: none;
+}
+
+/* Đảm bảo tab hiển thị đúng khi timer section bị disabled */
+.disabled-section .timer-tabs {
+  opacity: 1;
+  z-index: 15;
+}
+
+.disabled-section button.timer-tab {
+  opacity: 1;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Vô hiệu hóa pointer-events cho các element con khác trong timer section */
+.disabled-section .timer-display,
+.disabled-section .timer-controls:not(.timer-tabs),
+.disabled-section button:not(.timer-tab),
+.disabled-section input {
+  pointer-events: none !important;
+}
+
+/* Slider controls */
+.slider-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+  margin-top: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Slider value display */
+.slider-value-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  background-color: var(--primary-color);
+  padding: 4px 12px;
+  border-radius: 20px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#slider-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
 } 

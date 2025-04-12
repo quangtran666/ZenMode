@@ -26,15 +26,31 @@
     
     <div class="timer-section">
       <h2>Zen Timer</h2>
+      <div class="timer-tabs">
+        <button class="timer-tab active" id="countdown-tab">Countdown</button>
+        <button class="timer-tab" id="stopwatch-tab">Stopwatch</button>
+      </div>
       <div class="timer-display">
-        <span id="timer-value">25:00</span>
+        <div class="timer-display-inner">
+          <div class="timer-label">CURRENT TIME</div>
+          <span id="timer-value">25:00</span>
+        </div>
       </div>
       <div class="timer-controls">
-        <input type="range" id="timer-duration" min="1" max="120" value="25">
-        <div class="timer-labels">
-          <span>1 min</span>
-          <span>60 min</span>
-          <span>120 min</span>
+        <div id="countdown-controls">
+          <div class="slider-label">SET DURATION</div>
+          <div class="slider-value-container">
+            <span id="slider-value">25 min</span>
+          </div>
+          <input type="range" id="timer-duration" min="1" max="120" value="25">
+          <div class="timer-labels">
+            <span>1 min</span>
+            <span>60 min</span>
+            <span>120 min</span>
+          </div>
+        </div>
+        <div id="stopwatch-controls" class="hidden">
+          <div class="stopwatch-message">Track how long you stay focused</div>
         </div>
         <div class="buttons">
           <button id="start-timer" class="primary">Start</button>
@@ -43,6 +59,69 @@
         </div>
       </div>
     </div>
+    
+    <!-- Add inline script to ensure tabs are clickable -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('Direct DOM script loaded');
+        
+        // Force event listener on tabs to ensure they work
+        const countdownTab = document.getElementById('countdown-tab');
+        const stopwatchTab = document.getElementById('stopwatch-tab');
+        const countdownControls = document.getElementById('countdown-controls');
+        const stopwatchControls = document.getElementById('stopwatch-controls');
+        
+        if (countdownTab && stopwatchTab) {
+          // Đảm bảo rằng tab luôn hoạt động tốt
+          const ensureWorkingTabs = () => {
+            // Bỏ tất cả thuộc tính có thể gây cản trở việc click
+            countdownTab.style.pointerEvents = 'auto';
+            countdownTab.style.zIndex = '100';
+            countdownTab.disabled = false;
+            
+            stopwatchTab.style.pointerEvents = 'auto';
+            stopwatchTab.style.zIndex = '100'; 
+            stopwatchTab.disabled = false;
+          };
+          
+          // Gọi ngay khi script được load
+          ensureWorkingTabs();
+          
+          // Chạy hàm này định kỳ để đảm bảo tab hoạt động tốt
+          setInterval(ensureWorkingTabs, 500);
+          
+          countdownTab.addEventListener('click', function(e) {
+            console.log('Direct click on countdown tab');
+            
+            // Đảm bảo UI được cập nhật ngay lập tức
+            if (countdownControls && stopwatchControls) {
+              countdownTab.classList.add('active');
+              stopwatchTab.classList.remove('active');
+              countdownControls.classList.remove('hidden');
+              stopwatchControls.classList.add('hidden');
+            }
+            
+            // Sử dụng timeout để đảm bảo tab vẫn hoạt động sau khi click
+            setTimeout(ensureWorkingTabs, 50);
+          });
+          
+          stopwatchTab.addEventListener('click', function(e) {
+            console.log('Direct click on stopwatch tab');
+            
+            // Đảm bảo UI được cập nhật ngay lập tức
+            if (countdownControls && stopwatchControls) {
+              countdownTab.classList.remove('active');
+              stopwatchTab.classList.add('active');
+              countdownControls.classList.add('hidden');
+              stopwatchControls.classList.remove('hidden');
+            }
+            
+            // Sử dụng timeout để đảm bảo tab vẫn hoạt động sau khi click
+            setTimeout(ensureWorkingTabs, 50);
+          });
+        }
+      });
+    </script>
     
     <div class="sound-section">
       <h2>Ambient Sounds</h2>

@@ -49,7 +49,8 @@ describe('Background Message Handling', () => {
         timer: {
           duration: 25,
           isActive: false,
-          lockUntilComplete: false
+          lockUntilComplete: false,
+          timerMode: 'countdown'
         },
         sound: {
           type: 'rain',

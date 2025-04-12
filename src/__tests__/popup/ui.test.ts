@@ -14,6 +14,10 @@ describe('Popup UI Tests', () => {
   let startTimerBtn: HTMLButtonElement;
   let resumeTimerBtn: HTMLButtonElement;
   let resetTimerBtn: HTMLButtonElement;
+  let countdownTab: HTMLButtonElement;
+  let stopwatchTab: HTMLButtonElement;
+  let countdownControls: HTMLDivElement;
+  let stopwatchControls: HTMLDivElement;
   let soundSelect: HTMLSelectElement;
   let customSoundUrl: HTMLInputElement;
   let volumeControl: HTMLInputElement;
@@ -42,7 +46,8 @@ describe('Popup UI Tests', () => {
       timer: {
         duration: 25,
         isActive: false,
-        lockUntilComplete: false
+        lockUntilComplete: false,
+        timerMode: 'countdown'
       },
       sound: {
         type: 'rain',
@@ -77,15 +82,24 @@ describe('Popup UI Tests', () => {
         
         <div class="timer-section">
           <h2>Zen Timer</h2>
+          <div class="timer-tabs">
+            <button class="timer-tab active" id="countdown-tab">Countdown</button>
+            <button class="timer-tab" id="stopwatch-tab">Stopwatch</button>
+          </div>
           <div class="timer-display">
             <span id="timer-value">25:00</span>
           </div>
           <div class="timer-controls">
-            <input type="range" id="timer-duration" min="1" max="120" value="25">
-            <div class="timer-labels">
-              <span>1 min</span>
-              <span>60 min</span>
-              <span>120 min</span>
+            <div id="countdown-controls">
+              <input type="range" id="timer-duration" min="1" max="120" value="25">
+              <div class="timer-labels">
+                <span>1 min</span>
+                <span>60 min</span>
+                <span>120 min</span>
+              </div>
+            </div>
+            <div id="stopwatch-controls" class="hidden">
+              <div class="stopwatch-message">Track how long you stay focused</div>
             </div>
             <div class="buttons">
               <button id="start-timer" class="primary">Start</button>
@@ -140,6 +154,10 @@ describe('Popup UI Tests', () => {
     startTimerBtn = document.getElementById('start-timer') as HTMLButtonElement;
     resumeTimerBtn = document.getElementById('resume-timer') as HTMLButtonElement;
     resetTimerBtn = document.getElementById('reset-timer') as HTMLButtonElement;
+    countdownTab = document.getElementById('countdown-tab') as HTMLButtonElement;
+    stopwatchTab = document.getElementById('stopwatch-tab') as HTMLButtonElement;
+    countdownControls = document.getElementById('countdown-controls') as HTMLDivElement;
+    stopwatchControls = document.getElementById('stopwatch-controls') as HTMLDivElement;
     soundSelect = document.getElementById('sound-select') as HTMLSelectElement;
     customSoundUrl = document.getElementById('custom-sound-url') as HTMLInputElement;
     volumeControl = document.getElementById('volume-control') as HTMLInputElement;
@@ -262,5 +280,69 @@ describe('Popup UI Tests', () => {
       { type: 'UPDATE_SETTINGS', payload: { timer: { duration: 30 } } },
       expect.any(Function)
     );
+  });
+
+  it('should switch between countdown and stopwatch timer modes', async () => {
+    await loadPopupModule();
+    
+    // Trigger DOMContentLoaded event
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Initial state should be countdown mode
+    expect(countdownTab.classList.contains('active')).toBe(true);
+    expect(stopwatchTab.classList.contains('active')).toBe(false);
+    expect(countdownControls.classList.contains('hidden')).toBe(false);
+    expect(stopwatchControls.classList.contains('hidden')).toBe(true);
+    
+    // Click on stopwatch tab
+    stopwatchTab.click();
+    
+    // Let the async handler complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Verify that sendMessage was called with correct arguments to update timer mode
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+      { 
+        type: 'UPDATE_SETTINGS', 
+        payload: { 
+          timer: { 
+            timerMode: 'stopwatch',
+            isActive: false,
+            startTime: undefined,
+            endTime: undefined
+          }
+        }
+      }, 
+      expect.any(Function)
+    );
+    
+    // Mock the response from the background
+    const mockUpdateResponse = {
+      success: true,
+      state: {
+        ...mockState,
+        settings: {
+          ...mockState.settings,
+          timer: {
+            ...mockState.settings.timer,
+            timerMode: 'stopwatch'
+          }
+        }
+      }
+    };
+    
+    // Manually invoke the callback to simulate the response
+    const lastCall = (chrome.runtime.sendMessage as jest.Mock).mock.calls.slice(-1)[0];
+    lastCall[1](mockUpdateResponse);
+    
+    // Allow UI to update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Verify UI has updated to stopwatch mode
+    expect(countdownTab.classList.contains('active')).toBe(false);
+    expect(stopwatchTab.classList.contains('active')).toBe(true);
+    expect(countdownControls.classList.contains('hidden')).toBe(true);
+    expect(stopwatchControls.classList.contains('hidden')).toBe(false);
   });
 }); 

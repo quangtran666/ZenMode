@@ -10,7 +10,8 @@ export const DEFAULT_SETTINGS: ZenModeSettings = {
   timer: {
     duration: 25, // 25 minutes by default (Pomodoro technique)
     isActive: false,
-    lockUntilComplete: false
+    lockUntilComplete: false,
+    timerMode: 'countdown' // Default to countdown mode
   },
   sound: {
     type: 'rain',
@@ -118,12 +119,58 @@ export const loadState = async (): Promise<ZenModeState> => {
 // Update settings
 export const updateSettings = async (settings: Partial<ZenModeSettings>): Promise<ZenModeState> => {
   const state = await loadState();
+  
+  // Create a deep copy of the updated settings with proper handling of nested objects
+  const updatedSettings = {
+    ...state.settings,
+  };
+  
+  // Handle each potential settings category separately to ensure proper nesting
+  if (settings.timer) {
+    updatedSettings.timer = {
+      ...state.settings.timer,
+      ...settings.timer
+    };
+  }
+  
+  if (settings.sound) {
+    updatedSettings.sound = {
+      ...state.settings.sound,
+      ...settings.sound
+    };
+  }
+  
+  if (settings.schedule) {
+    updatedSettings.schedule = {
+      ...state.settings.schedule,
+      ...settings.schedule
+    };
+  }
+  
+  if (settings.blockedSites) {
+    updatedSettings.blockedSites = settings.blockedSites;
+  }
+  
+  if (settings.motivationalQuotes) {
+    updatedSettings.motivationalQuotes = settings.motivationalQuotes;
+  }
+  
+  // Handle remaining top-level properties
+  if (settings.passcodeEnabled !== undefined) {
+    updatedSettings.passcodeEnabled = settings.passcodeEnabled;
+  }
+  
+  if (settings.passcode !== undefined) {
+    updatedSettings.passcode = settings.passcode;
+  }
+  
+  if (settings.usePuzzleInsteadOfPasscode !== undefined) {
+    updatedSettings.usePuzzleInsteadOfPasscode = settings.usePuzzleInsteadOfPasscode;
+  }
+  
   const updatedState = {
     ...state,
-    settings: {
-      ...state.settings,
-      ...settings
-    }
+    settings: updatedSettings
   };
   
   await saveState(updatedState);
@@ -154,20 +201,29 @@ export const completeCurrentSession = async (): Promise<ZenModeState> => {
     return state;
   }
   
+  const duration = state.currentSession.startTime 
+    ? Math.floor((Date.now() - state.currentSession.startTime) / 1000)
+    : 0;
+  
+  // Tạo phiên hoàn thành
   const completedSession = {
     ...state.currentSession,
     endTime: Date.now(),
     completed: true,
-    duration: state.currentSession.startTime 
-      ? Math.floor((Date.now() - state.currentSession.startTime) / 1000)
-      : undefined
+    duration
   };
+  
+  // Chỉ lưu vào lịch sử nếu phiên kéo dài ít nhất 1 phút (60 giây)
+  const shouldSaveToHistory = duration >= 60;
   
   const updatedState: ZenModeState = {
     ...state,
     isActive: false,
     currentSession: undefined,
-    history: [...state.history, completedSession]
+    // Chỉ thêm vào history nếu phiên làm việc kéo dài hơn 1 phút
+    history: shouldSaveToHistory 
+      ? [...state.history, completedSession] 
+      : state.history
   };
   
   await saveState(updatedState);

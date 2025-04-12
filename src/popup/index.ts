@@ -4,10 +4,15 @@ import { ZenModeState, ZenTimer, AmbientSound } from '../types';
 const zenModeToggle = document.getElementById('zenModeToggle') as HTMLInputElement;
 const statusText = document.getElementById('status-text') as HTMLSpanElement;
 const timerValue = document.getElementById('timer-value') as HTMLSpanElement;
+const sliderValue = document.getElementById('slider-value') as HTMLSpanElement;
 const timerDuration = document.getElementById('timer-duration') as HTMLInputElement;
 const startTimerBtn = document.getElementById('start-timer') as HTMLButtonElement;
 const resumeTimerBtn = document.getElementById('resume-timer') as HTMLButtonElement;
 const resetTimerBtn = document.getElementById('reset-timer') as HTMLButtonElement;
+const countdownTab = document.getElementById('countdown-tab') as HTMLButtonElement;
+const stopwatchTab = document.getElementById('stopwatch-tab') as HTMLButtonElement;
+const countdownControls = document.getElementById('countdown-controls') as HTMLDivElement;
+const stopwatchControls = document.getElementById('stopwatch-controls') as HTMLDivElement;
 const soundSelect = document.getElementById('sound-select') as HTMLSelectElement;
 const customSoundUrl = document.getElementById('custom-sound-url') as HTMLInputElement;
 const volumeControl = document.getElementById('volume-control') as HTMLInputElement;
@@ -21,7 +26,156 @@ const viewHistoryBtn = document.getElementById('view-history') as HTMLButtonElem
 let timer: number | null = null;
 let remainingTime = 0;
 let pausedTime = 0; // Store remaining time when paused
+let elapsedTime = 0; // For stopwatch mode
 let appState: ZenModeState | null = null;
+
+// Countdown and Stopwatch specific functions
+function startCountdownTimer(initialRemainingTime: number) {
+  // Clear any existing timer
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+  
+  // Set initial remaining time
+  remainingTime = initialRemainingTime;
+  console.log(`Starting COUNTDOWN timer with ${remainingTime} seconds remaining`);
+  
+  // Create a countdown-specific timer
+  timer = setInterval(() => {
+    // Debug log
+    console.log(`COUNTDOWN: remainingTime = ${remainingTime}`);
+    
+    if (remainingTime > 0) {
+      remainingTime--;
+      displayTime(remainingTime);
+      
+      if (remainingTime <= 0) {
+        // Timer completed
+        clearInterval(timer as number);
+        timer = null;
+        displayTime(0);
+        
+        // Notify timer completion
+        chrome.runtime.sendMessage({ 
+          type: 'TIMER_COMPLETED' 
+        });
+        
+        if (startTimerBtn) startTimerBtn.textContent = 'Start';
+      }
+    } else {
+      // Safety cleanup
+      clearInterval(timer as number);
+      timer = null;
+      displayTime(0);
+      
+      if (startTimerBtn) startTimerBtn.textContent = 'Start';
+    }
+  }, 1000) as unknown as number;
+}
+
+function startStopwatchTimer(initialElapsedTime: number) {
+  // Clear any existing timer
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+  
+  // Set initial elapsed time
+  elapsedTime = initialElapsedTime;
+  console.log(`Starting STOPWATCH timer with ${elapsedTime} seconds elapsed`);
+  
+  // Create a stopwatch-specific timer
+  timer = setInterval(() => {
+    // Debug log
+    console.log(`STOPWATCH: elapsedTime = ${elapsedTime}`);
+    
+    // Increment elapsed time
+    elapsedTime++;
+    displayTime(elapsedTime, true);
+  }, 1000) as unknown as number;
+}
+
+// Start timer based on mode
+function startTimer(mode: 'countdown' | 'stopwatch') {
+  console.log(`startTimer called with mode: ${mode}`);
+  
+  if (mode === 'countdown') {
+    startCountdownTimer(remainingTime);
+  } else {
+    startStopwatchTimer(elapsedTime);
+  }
+}
+
+// Function to start a new timer
+function startNewTimer(duration: number, startTime: number, endTime: number) {
+  if (!appState) return;
+
+  const timerMode = appState.settings.timer.timerMode || 'countdown';
+  console.log(`Starting new timer: mode=${timerMode}, duration=${duration}`);
+
+  const payload: Partial<ZenTimer> = {
+    isActive: true,
+    duration,
+    startTime,
+    timerMode // Ensure we maintain the timer mode
+  };
+
+  // In countdown mode, we need an end time
+  if (timerMode === 'countdown') {
+    payload.endTime = endTime;
+  }
+
+  chrome.runtime.sendMessage({ 
+    type: 'UPDATE_SETTINGS',
+    payload: { 
+      timer: payload
+    }
+  }, (response) => {
+    if (response && response.success) {
+      appState = response.state;
+      
+      if (appState && appState.settings.timer.timerMode === 'countdown') {
+        // Calculate the correct remaining time for countdown
+        remainingTime = Math.floor((endTime - Date.now()) / 1000);
+        console.log(`Setting remainingTime for countdown: ${remainingTime} seconds`);
+        
+        // Ensure it's a positive value
+        if (remainingTime <= 0) {
+          console.error('Invalid remaining time calculated. Using duration instead.');
+          remainingTime = duration * 60;
+        }
+        
+        // Start the countdown timer with specific function
+        startCountdownTimer(remainingTime);
+      } else if (appState) {
+        // Reset and start the stopwatch with specific function
+        elapsedTime = 0;
+        console.log('Setting elapsedTime for stopwatch: 0 seconds');
+        startStopwatchTimer(elapsedTime);
+      }
+      
+      if (startTimerBtn) startTimerBtn.textContent = 'Stop';
+      if (startTimerBtn) startTimerBtn.classList.remove('hidden');
+      if (resumeTimerBtn) resumeTimerBtn.classList.add('hidden');
+    }
+  });
+}
+
+// Function to update the duration slider value without affecting the timer display
+function updateDurationSlider(duration: number) {
+  // Only update slider-related elements, never modify the timer display
+  if (timerDuration) {
+    timerDuration.value = duration.toString();
+  }
+  
+  // Update the slider value text display
+  if (sliderValue) {
+    sliderValue.textContent = `${duration} min`;
+  }
+  
+  console.log(`Updated slider to ${duration} minutes (timer display unchanged)`);
+}
 
 // Initialize popup
 async function initialize() {
@@ -56,17 +210,76 @@ function updateUI() {
   
   // Update timer settings
   const timerSettings = appState.settings.timer;
-  timerDuration.value = timerSettings.duration.toString();
+  
+  // Đảm bảo timerSettings.duration không bị undefined và cập nhật slider giá trị
+  if (timerSettings && timerSettings.duration !== undefined) {
+    updateDurationSlider(timerSettings.duration);
+  } else {
+    // Gán giá trị mặc định nếu duration bị undefined
+    updateDurationSlider(25);
+  }
+  
+  // Initialize slider value display on first load
+  if (sliderValue && timerSettings && timerSettings.duration) {
+    sliderValue.textContent = `${timerSettings.duration} min`;
+  }
+  
   updateTimerDisplay(timerSettings);
+  
+  // Enable/disable timer controls based on ZenMode active state
+  const timerControls = [
+    timerDuration, startTimerBtn, resumeTimerBtn, resetTimerBtn
+  ];
+  
+  // Visual indicator for disabled timer section
+  const timerSection = document.querySelector('.timer-section') as HTMLElement;
+  
+  // QUAN TRỌNG: Bỏ tất cả các thuộc tính disabled và style của các tab
+  // KHÔNG đặt bất kỳ thuộc tính nào cho tab ở đây
+  // Các tab phải luôn hoạt động bình thường
+  
+  if (appState.isActive) {
+    // Enable timer controls if ZenMode is active
+    timerControls.forEach(element => {
+      element.disabled = false;
+    });
+    
+    if (timerSection) {
+      timerSection.classList.remove('disabled-section');
+    }
+  } else {
+    // Disable timer controls if ZenMode is not active
+    timerControls.forEach(element => {
+      element.disabled = true;
+    });
+    
+    // Stop any running timer
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    
+    if (timerSection) {
+      timerSection.classList.add('disabled-section');
+    }
+  }
   
   // Update sound settings
   const soundSettings = appState.settings.sound;
-  soundSelect.value = soundSettings.type;
-  volumeControl.value = soundSettings.volume.toString();
-  toggleSoundBtn.textContent = soundSettings.isPlaying ? 'Stop' : 'Play';
+  if (soundSettings && soundSettings.type) {
+    soundSelect.value = soundSettings.type;
+  }
+  
+  if (soundSettings && soundSettings.volume !== undefined) {
+    volumeControl.value = soundSettings.volume.toString();
+  } else {
+    volumeControl.value = "50"; // Giá trị mặc định
+  }
+  
+  toggleSoundBtn.textContent = soundSettings && soundSettings.isPlaying ? 'Stop' : 'Play';
   toggleSoundBtn.disabled = false;
   
-  if (soundSettings.type === 'custom' && soundSettings.customUrl) {
+  if (soundSettings && soundSettings.type === 'custom' && soundSettings.customUrl) {
     customSoundUrl.value = soundSettings.customUrl;
     customSoundUrl.classList.remove('hidden');
   } else {
@@ -74,7 +287,7 @@ function updateUI() {
   }
   
   // Update visual cues for sound playing
-  if (soundSettings.isPlaying) {
+  if (soundSettings && soundSettings.isPlaying) {
     soundSelect.classList.add('active-sound');
     volumeControl.classList.add('active-sound');
     
@@ -100,72 +313,157 @@ function updateUI() {
 
 // Update timer display
 function updateTimerDisplay(timerSettings: ZenTimer) {
-  if (timerSettings.isActive && timerSettings.startTime && timerSettings.endTime) {
-    // Calculate remaining time for active timer
-    const now = Date.now();
-    const endTime = timerSettings.endTime;
+  // Kiểm tra xem timerSettings có tồn tại không
+  if (!timerSettings) {
+    console.error('timerSettings is undefined');
+    return;
+  }
+
+  try {
+    // Sử dụng giá trị mặc định cho timerMode nếu undefined
+    const timerMode = timerSettings.timerMode || 'countdown';
+    console.log(`updateTimerDisplay: mode=${timerMode}, isActive=${timerSettings.isActive}`);
     
-    if (now < endTime) {
-      remainingTime = Math.floor((endTime - now) / 1000);
-      displayTime(remainingTime);
-      startTimer();
-      startTimerBtn.textContent = 'Stop';
-      startTimerBtn.classList.remove('hidden');
-      resumeTimerBtn.classList.add('hidden');
+    // First, update the tabs UI based on timer mode
+    if (timerMode === 'countdown') {
+      if (countdownTab) countdownTab.classList.add('active');
+      if (stopwatchTab) stopwatchTab.classList.remove('active');
+      if (countdownControls) countdownControls.classList.remove('hidden');
+      if (stopwatchControls) stopwatchControls.classList.add('hidden');
     } else {
-      // Timer has ended
-      displayTime(0);
-      startTimerBtn.textContent = 'Start';
-      startTimerBtn.classList.remove('hidden');
-      resumeTimerBtn.classList.add('hidden');
+      if (countdownTab) countdownTab.classList.remove('active');
+      if (stopwatchTab) stopwatchTab.classList.add('active');
+      if (countdownControls) countdownControls.classList.add('hidden');
+      if (stopwatchControls) stopwatchControls.classList.remove('hidden');
     }
-  } else {
-    // Display timer duration when not active
-    displayTime(timerSettings.duration * 60);
-    startTimerBtn.textContent = 'Start';
-    
-    // Show Resume button if we have a paused timer
-    if (pausedTime > 0) {
-      startTimerBtn.classList.add('hidden');
-      resumeTimerBtn.classList.remove('hidden');
+
+    // Kiểm tra ZenMode có được bật không
+    if (!appState || !appState.isActive) {
+      // Nếu ZenMode không được bật, hiển thị thời gian mặc định và dừng mọi hoạt động
+      if (timerMode === 'countdown') {
+        // Đảm bảo duration không bị undefined
+        const duration = timerSettings.duration !== undefined ? timerSettings.duration : 25;
+        displayTime(duration * 60);
+      } else {
+        displayTime(0, true);
+      }
+      
+      if (startTimerBtn) startTimerBtn.textContent = 'Start';
+      
+      // Dừng mọi timer đang hoạt động
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      
+      return;
+    }
+
+    // Timer is active, update display accordingly
+    if (timerSettings.isActive && timerSettings.startTime) {
+      const now = Date.now();
+      
+      if (timerMode === 'countdown' && timerSettings.endTime) {
+        // Countdown mode - calculate remaining time
+        if (now < timerSettings.endTime) {
+          // Tính thời gian còn lại
+          remainingTime = Math.floor((timerSettings.endTime - now) / 1000);
+          console.log(`updateTimerDisplay: countdown active, remainingTime=${remainingTime}`);
+          
+          // Hiển thị thời gian
+          displayTime(remainingTime);
+          
+          // Nếu chưa có timer đang chạy, khởi động timer đếm ngược
+          if (!timer) {
+            startCountdownTimer(remainingTime);
+          }
+          
+          if (startTimerBtn) startTimerBtn.textContent = 'Stop';
+          if (startTimerBtn) startTimerBtn.classList.remove('hidden');
+          if (resumeTimerBtn) resumeTimerBtn.classList.add('hidden');
+        } else {
+          // Timer has ended
+          remainingTime = 0;
+          displayTime(0);
+          if (startTimerBtn) startTimerBtn.textContent = 'Start';
+          if (startTimerBtn) startTimerBtn.classList.remove('hidden');
+          if (resumeTimerBtn) resumeTimerBtn.classList.add('hidden');
+        }
+      } else if (timerMode === 'stopwatch') {
+        // Stopwatch mode - calculate elapsed time
+        elapsedTime = Math.floor((now - timerSettings.startTime) / 1000);
+        console.log(`updateTimerDisplay: stopwatch active, elapsedTime=${elapsedTime}`);
+        
+        // Hiển thị thời gian
+        displayTime(elapsedTime, true);
+        
+        // Nếu chưa có timer đang chạy, khởi động timer đếm lên
+        if (!timer) {
+          startStopwatchTimer(elapsedTime);
+        }
+        
+        if (startTimerBtn) startTimerBtn.textContent = 'Stop';
+        if (startTimerBtn) startTimerBtn.classList.remove('hidden');
+        if (resumeTimerBtn) resumeTimerBtn.classList.add('hidden');
+      }
     } else {
-      startTimerBtn.classList.remove('hidden');
-      resumeTimerBtn.classList.add('hidden');
+      // Timer is not active
+      if (timerMode === 'countdown') {
+        // If we have paused time, show that instead of the default duration
+        if (pausedTime > 0) {
+          displayTime(pausedTime);
+          console.log(`Showing paused countdown time: ${pausedTime} seconds`);
+        } else {
+          // Display default timer duration when not active and not paused
+          const duration = timerSettings.duration !== undefined ? timerSettings.duration : 25;
+          displayTime(duration * 60);
+        }
+      } else {
+        // For stopwatch, show paused elapsed time or 00:00:00
+        if (pausedTime > 0) {
+          displayTime(pausedTime, true);
+          console.log(`Showing paused stopwatch time: ${pausedTime} seconds`);
+        } else {
+          displayTime(0, true);
+        }
+      }
+      
+      if (startTimerBtn) startTimerBtn.textContent = 'Start';
+      
+      // Show Resume button if we have a paused timer
+      if (pausedTime > 0) {
+        if (startTimerBtn) startTimerBtn.classList.add('hidden');
+        if (resumeTimerBtn) resumeTimerBtn.classList.remove('hidden');
+      } else {
+        if (startTimerBtn) startTimerBtn.classList.remove('hidden');
+        if (resumeTimerBtn) resumeTimerBtn.classList.add('hidden');
+      }
     }
+  } catch (error) {
+    console.error('Error updating timer display:', error);
   }
 }
 
-// Display time in mm:ss format
-function displayTime(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  timerValue.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-}
-
-// Start timer countdown
-function startTimer() {
-  if (timer) {
-    clearInterval(timer);
+// Display time in different formats based on mode - updates ONLY the timer display (not slider)
+function displayTime(seconds: number, isStopwatch: boolean = false) {
+  if (seconds === undefined || seconds === null) {
+    seconds = 0;
   }
   
-  timer = setInterval(() => {
-    remainingTime--;
-    
-    if (remainingTime <= 0) {
-      clearInterval(timer as number);
-      timer = null;
-      displayTime(0);
-      
-      // Notify timer completion
-      chrome.runtime.sendMessage({ 
-        type: 'TIMER_COMPLETED' 
-      });
-      
-      startTimerBtn.textContent = 'Start';
-    } else {
-      displayTime(remainingTime);
-    }
-  }, 1000) as unknown as number;
+  if (isStopwatch) {
+    // For stopwatch, use HH:MM:SS format
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    timerValue.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  } else {
+    // For countdown, use MM:SS format
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    timerValue.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+  
+  console.log(`Updated timer display to ${timerValue.textContent} (slider value unchanged)`);
 }
 
 // Update stats display
@@ -342,8 +640,25 @@ function setupEventListeners() {
   
   // Timer duration slider
   timerDuration.addEventListener('input', () => {
+    if (!appState || !appState.isActive) return;
+    
     const duration = parseInt(timerDuration.value);
-    displayTime(duration * 60);
+    
+    // Only update the countdown display if we're showing the initial timer value
+    // (i.e., no timer is running, no timer was paused, and we're in countdown mode)
+    if (!timer && 
+        !pausedTime && 
+        appState.settings.timer.timerMode === 'countdown' && 
+        !appState.settings.timer.isActive) {
+      displayTime(duration * 60);
+    }
+    // Never update the timer display if we have a pausedTime (timer was stopped)
+    // This ensures the current time display shows the actual time left
+    
+    // Always update the slider value display
+    if (sliderValue) {
+      sliderValue.textContent = `${duration} min`;
+    }
     
     // Update settings in background
     chrome.runtime.sendMessage({ 
@@ -362,97 +677,168 @@ function setupEventListeners() {
   
   // Start/Stop timer button
   startTimerBtn.addEventListener('click', () => {
-    if (!appState) return;
+    if (!appState || !appState.isActive) return;
     
     const isTimerActive = appState.settings.timer.isActive;
+    const timerMode = appState.settings.timer.timerMode || 'countdown';
+    
+    console.log(`Timer button clicked: isActive=${isTimerActive}, mode=${timerMode}`);
     
     if (isTimerActive) {
       // Stop timer and save remaining time
-      pausedTime = remainingTime;
+      if (timerMode === 'countdown') {
+        console.log(`Stopping countdown timer with remainingTime=${remainingTime}`);
+        pausedTime = remainingTime;
+      } else {
+        // For stopwatch, store elapsed time
+        console.log(`Stopping stopwatch with elapsedTime=${elapsedTime}`);
+        pausedTime = elapsedTime;
+      }
       stopTimer();
     } else {
       // Start a new timer
-      pausedTime = 0; // Reset paused time when starting fresh
-      const duration = parseInt(timerDuration.value);
       const now = Date.now();
-      const endTime = now + (duration * 60 * 1000);
       
-      startNewTimer(duration, now, endTime);
+      if (timerMode === 'countdown') {
+        // Countdown mode
+        pausedTime = 0; // Reset paused time when starting fresh
+        const duration = parseInt(timerDuration.value);
+        console.log(`Starting countdown timer with duration=${duration} minutes`);
+        
+        // Calculate endTime
+        const endTime = now + (duration * 60 * 1000);
+        
+        // Set the correct initial remainingTime
+        remainingTime = duration * 60;
+        console.log(`Setting initial remainingTime to ${remainingTime} seconds`);
+        
+        startNewTimer(duration, now, endTime);
+      } else {
+        // Stopwatch mode
+        console.log(`Starting stopwatch timer`);
+        elapsedTime = 0; // Reset elapsed time for fresh start
+        startNewTimer(0, now, 0); // For stopwatch, duration and endTime aren't used
+      }
     }
   });
   
   // Resume timer button
   resumeTimerBtn.addEventListener('click', () => {
-    if (!appState || pausedTime <= 0) return;
+    if (!appState || !appState.isActive || pausedTime <= 0) return;
     
-    // Calculate new end time based on remaining time
     const now = Date.now();
-    const endTime = now + (pausedTime * 1000);
+    const timerMode = appState.settings.timer.timerMode || 'countdown';
     
-    // Use the original duration from settings to maintain context
-    const duration = appState.settings.timer.duration;
+    console.log(`Resuming timer: mode=${timerMode}, pausedTime=${pausedTime}`);
     
-    startNewTimer(duration, now, endTime);
+    if (timerMode === 'countdown') {
+      // For countdown, calculate new end time based on remaining time
+      const endTime = now + (pausedTime * 1000);
+      // Use the original duration from settings
+      const duration = appState.settings.timer.duration || 25;
+      console.log(`Countdown resume: duration=${duration}, remainingTime=${pausedTime}`);
+      
+      // Đảm bảo remainingTime được set đúng từ pausedTime trước khi gọi startNewTimer
+      remainingTime = pausedTime;
+      
+      startNewTimer(duration, now, endTime);
+    } else {
+      // For stopwatch, we continue from the stored elapsed time
+      console.log(`Stopwatch resume: elapsedTime=${pausedTime}`);
+      
+      // Đảm bảo elapsedTime được set đúng từ pausedTime
+      elapsedTime = pausedTime;
+      
+      // Tính lại startTime dựa trên elapsedTime hiện tại
+      const adjustedStartTime = now - (elapsedTime * 1000);
+      startNewTimer(0, adjustedStartTime, 0);
+    }
+    
     pausedTime = 0; // Reset paused time after resuming
   });
   
-  // Function to start a new timer
-  function startNewTimer(duration: number, startTime: number, endTime: number) {
-    chrome.runtime.sendMessage({ 
-      type: 'UPDATE_SETTINGS',
-      payload: { 
-        timer: { 
-          isActive: true,
-          duration,
-          startTime,
-          endTime
-        }
-      }
-    }, (response) => {
-      if (response && response.success) {
-        appState = response.state;
-        remainingTime = Math.floor((endTime - Date.now()) / 1000);
-        startTimer();
-        startTimerBtn.textContent = 'Stop';
-        startTimerBtn.classList.remove('hidden');
-        resumeTimerBtn.classList.add('hidden');
-      }
-    });
-  }
-  
   // Function to stop the timer
   function stopTimer() {
-    chrome.runtime.sendMessage({ 
-      type: 'UPDATE_SETTINGS',
-      payload: { 
-        timer: { 
-          isActive: false,
-          startTime: undefined,
-          endTime: undefined
+    if (!appState) return;
+
+    // Store current timer mode before stopping
+    const currentTimerMode = appState.settings.timer.timerMode;
+    
+    // Store the current display time before stopping
+    // This ensures we don't lose the current time display when adjusting slider
+    if (currentTimerMode === 'countdown') {
+      // Save the current remaining time for countdown
+      pausedTime = remainingTime;
+      console.log(`Saving remaining time: ${pausedTime} seconds`);
+    } else {
+      // Save the current elapsed time for stopwatch
+      pausedTime = elapsedTime;
+      console.log(`Saving elapsed time: ${pausedTime} seconds`);
+    }
+
+    // Nếu là chế độ stopwatch và đang có timer chạy, cần ghi nhận thời gian đã trôi qua
+    if (currentTimerMode === 'stopwatch' && 
+        appState.settings.timer.isActive && 
+        timer) {
+      // Chỉ cần gửi thông báo về endTime là undefined để giữ trạng thái startTime
+      chrome.runtime.sendMessage({ 
+        type: 'UPDATE_SETTINGS',
+        payload: { 
+          timer: { 
+            isActive: false,
+            timerMode: 'stopwatch' // Ensure we stay in stopwatch mode
+          }
         }
-      }
-    }, (response) => {
-      if (response && response.success) {
-        appState = response.state;
-        
-        if (timer) {
-          clearInterval(timer);
-          timer = null;
+      }, (response) => {
+        if (response && response.success) {
+          appState = response.state;
+          
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+          
+          startTimerBtn.classList.add('hidden');
+          resumeTimerBtn.classList.remove('hidden');
+          updateUI();
         }
-        
-        startTimerBtn.classList.add('hidden');
-        resumeTimerBtn.classList.remove('hidden');
-        updateUI();
-      }
-    });
+      });
+    } else {
+      // Hành vi mặc định cho chế độ countdown
+      chrome.runtime.sendMessage({ 
+        type: 'UPDATE_SETTINGS',
+        payload: { 
+          timer: { 
+            isActive: false,
+            startTime: undefined,
+            endTime: undefined,
+            timerMode: currentTimerMode // Preserve current timer mode
+          }
+        }
+      }, (response) => {
+        if (response && response.success) {
+          appState = response.state;
+          
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+          
+          startTimerBtn.classList.add('hidden');
+          resumeTimerBtn.classList.remove('hidden');
+          updateUI();
+        }
+      });
+    }
   }
   
   // Reset timer button
   resetTimerBtn.addEventListener('click', () => {
-    if (!appState) return;
+    if (!appState || !appState.isActive) return;
     
     // Reset paused time
     pausedTime = 0;
+    elapsedTime = 0;
     
     // Stop and reset timer
     chrome.runtime.sendMessage({ 
@@ -473,12 +859,31 @@ function setupEventListeners() {
           timer = null;
         }
         
-        const duration = parseInt(timerDuration.value);
-        displayTime(duration * 60);
+        if (appState && appState.settings.timer.timerMode === 'countdown') {
+          const duration = parseInt(timerDuration.value);
+          displayTime(duration * 60);
+        } else {
+          displayTime(0, true);
+        }
+        
         startTimerBtn.textContent = 'Start';
         startTimerBtn.classList.remove('hidden');
         resumeTimerBtn.classList.add('hidden');
       }
+    });
+    
+    // Nếu đang trong chế độ ZenMode, hoàn thành phiên hiện tại và bắt đầu phiên mới
+    chrome.runtime.sendMessage({
+      type: 'TOGGLE_ZEN_MODE',
+      payload: { isActive: false }
+    }, () => {
+      // Đợi một chút để đảm bảo phiên trước đã kết thúc
+      setTimeout(() => {
+        chrome.runtime.sendMessage({
+          type: 'TOGGLE_ZEN_MODE',
+          payload: { isActive: true }
+        });
+      }, 100);
     });
   });
   
@@ -629,4 +1034,137 @@ function setupEventListeners() {
 }
 
 // Initialize the popup
-document.addEventListener('DOMContentLoaded', initialize); 
+document.addEventListener('DOMContentLoaded', () => {
+  initialize();
+  
+  // Thêm event listener cho các tab
+  console.log("Adding tab event listeners");
+  
+  // Timer mode tabs
+  if (countdownTab && stopwatchTab) {
+    countdownTab.addEventListener('click', () => {
+      if (!appState) return;
+      
+      // Đảm bảo các phần tử UI đã được định nghĩa
+      if (!countdownControls || !stopwatchControls) {
+        console.error('countdownControls or stopwatchControls not found');
+        return;
+      }
+      
+      // Get current timer state before switching
+      const wasTimerActive = appState.settings.timer.isActive;
+      // Store current duration value before switching
+      const currentDuration = appState.settings.timer.duration || 25;
+      
+      // Dừng timer hiện tại nếu có
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      
+      // Cập nhật giao diện ngay lập tức để feedback trực quan
+      countdownTab.classList.add('active');
+      stopwatchTab.classList.remove('active');
+      countdownControls.classList.remove('hidden');
+      stopwatchControls.classList.add('hidden');
+      
+      // Reset biến thời gian của chế độ khác
+      elapsedTime = 0;
+      
+      // Đảm bảo hiển thị thời gian Countdown mặc định
+      if (appState.settings.timer && appState.settings.timer.duration) {
+        const duration = appState.settings.timer.duration;
+        displayTime(duration * 60); // Update timer display
+        updateDurationSlider(duration); // Update slider and its display separately
+        
+        // Update slider value display explicitly
+        if (sliderValue) {
+          sliderValue.textContent = `${duration} min`;
+        }
+      } else {
+        displayTime(25 * 60); // Mặc định 25 phút
+        updateDurationSlider(25); // Update slider separately
+        
+        // Update slider value display explicitly
+        if (sliderValue) {
+          sliderValue.textContent = '25 min';
+        }
+      }
+      
+      // Cập nhật appState thông qua message
+      if (appState.settings.timer) {
+        chrome.runtime.sendMessage({ 
+          type: 'UPDATE_SETTINGS',
+          payload: { 
+            timer: { 
+              timerMode: 'countdown',
+              isActive: false, // Đảm bảo timer không chạy khi chuyển tab
+              startTime: undefined,
+              endTime: undefined,
+              duration: currentDuration // Preserve the duration value
+            }
+          }
+        }, (response) => {
+          if (response && response.success) {
+            appState = response.state;
+            updateUI();
+          }
+        });
+      }
+    });
+    
+    stopwatchTab.addEventListener('click', () => {
+      if (!appState) return;
+      
+      // Đảm bảo các phần tử UI đã được định nghĩa
+      if (!countdownControls || !stopwatchControls) {
+        console.error('countdownControls or stopwatchControls not found');
+        return;
+      }
+      
+      // Get current timer state before switching
+      const wasTimerActive = appState.settings.timer.isActive;
+      
+      // Dừng timer hiện tại nếu có
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      
+      // Cập nhật giao diện ngay lập tức để feedback trực quan
+      countdownTab.classList.remove('active');
+      stopwatchTab.classList.add('active');
+      countdownControls.classList.add('hidden');
+      stopwatchControls.classList.remove('hidden');
+      
+      // Reset biến thời gian của chế độ khác
+      remainingTime = 0;
+      pausedTime = 0;
+      
+      // Đảm bảo hiển thị thời gian Stopwatch mặc định
+      displayTime(0, true);
+      
+      // Cập nhật appState thông qua message
+      if (appState.settings.timer) {
+        chrome.runtime.sendMessage({ 
+          type: 'UPDATE_SETTINGS',
+          payload: { 
+            timer: { 
+              timerMode: 'stopwatch',
+              isActive: false, // Đảm bảo timer không chạy khi chuyển tab
+              startTime: undefined,
+              endTime: undefined
+            }
+          }
+        }, (response) => {
+          if (response && response.success) {
+            appState = response.state;
+            updateUI();
+          }
+        });
+      }
+    });
+  } else {
+    console.error('Timer tabs not found');
+  }
+}); 

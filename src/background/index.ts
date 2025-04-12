@@ -1,5 +1,5 @@
 import { Message, BlockedSite, ZenModeState, AmbientSoundType } from '../types';
-import { loadState, toggleZenMode, updateSettings } from '../utils/storage';
+import { loadState, toggleZenMode, updateSettings, saveState } from '../utils/storage';
 
 // Audio player for ambient sounds
 let audioPlayer: HTMLAudioElement | null = null;
@@ -176,7 +176,62 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
             sendResponse({ success: true, state: updatedState });
           }
           break;
+        
+        case 'TIMER_COMPLETED':
+          // Khi bộ đếm thời gian hoàn thành, chúng ta muốn hoàn thành phiên làm việc hiện tại
+          // nhưng giữ ZenMode vẫn hoạt động
+          const currentState = await loadState();
           
+          // Chỉ xử lý nếu đang có phiên làm việc
+          if (currentState.currentSession) {
+            // Tính toán thời lượng phiên
+            const duration = currentState.currentSession.startTime
+              ? Math.floor((Date.now() - currentState.currentSession.startTime) / 1000)
+              : 0;
+              
+            // Chỉ lưu vào lịch sử nếu phiên kéo dài ít nhất 1 phút (60 giây)
+            if (duration >= 60) {
+              const completedSession = {
+                ...currentState.currentSession,
+                endTime: Date.now(),
+                completed: true,
+                duration
+              };
+              
+              // Cập nhật trạng thái với phiên làm việc đã hoàn thành và khởi động phiên mới
+              const updatedState = {
+                ...currentState,
+                // Thêm phiên hiện tại vào lịch sử
+                history: [...currentState.history, completedSession],
+                // Bắt đầu phiên mới
+                currentSession: {
+                  id: Date.now().toString(),
+                  startTime: Date.now(),
+                  completed: false
+                }
+              };
+              
+              await saveState(updatedState);
+              sendResponse({ success: true, state: updatedState });
+            } else {
+              // Nếu phiên dưới 1 phút, chỉ khởi động phiên mới mà không lưu phiên hiện tại
+              const updatedState = {
+                ...currentState,
+                currentSession: {
+                  id: Date.now().toString(),
+                  startTime: Date.now(),
+                  completed: false
+                }
+              };
+              
+              await saveState(updatedState);
+              sendResponse({ success: true, state: updatedState });
+            }
+          } else {
+            sendResponse({ success: true, state: currentState });
+          }
+          break;
+        
         case 'GET_STATE':
           const state = await loadState();
           sendResponse({ success: true, state });

@@ -23,6 +23,7 @@ export interface ZenTimer {
   isActive: boolean;
   lockUntilComplete: boolean;
   passcode?: string;
+  timerMode: 'countdown' | 'stopwatch'; // Mode of the timer: countdown or stopwatch
 }
 
 // Sound Types

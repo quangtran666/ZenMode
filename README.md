@@ -15,18 +15,21 @@ ZenMode is a Chrome extension designed to help you stay focused and productive b
 - Shows motivational quotes when a site is blocked
 
 ### 3. Zen Timer
+- **Dual timer modes:** Countdown timer and Stopwatch for flexibility
+- **Clear interface:** Separate displays for Current Time and Duration Settings
+- **Pause and resume:** Continue your timer sessions after breaks
 - Set a focused work timer (Pomodoro-style)
 - Lock mode prevents deactivating before completion
 - Optional passcode or puzzle protection
 
 ### 4. Ambient Sounds
 - Play various background sounds to help focus
-- Options: white noise, rain, cafe, ocean, nature, and more
+- Options: white noise, rain, cafe, ocean, nature, and fireplace
 - Support for custom audio URLs (Spotify/YouTube)
 
 ### 5. Work Log
 - Track all your focus sessions
-- View statistics on total time and streaks
+- View statistics on total time and sessions completed
 - Export work history as CSV
 
 ### 6. Motivational Support
@@ -42,7 +45,7 @@ ZenMode is a Chrome extension designed to help you stay focused and productive b
 1. Download or clone this repository
 2. Open Chrome and go to `chrome://extensions/`
 3. Enable "Developer mode" (toggle in top-right)
-4. Click "Load unpacked" and select the `dist` folder
+4. Click "Load unpacked" and select the folder containing the extension
 5. ZenMode extension should now appear in your extensions
 
 ## 💻 Development
@@ -70,10 +73,20 @@ npm run build
 2. Toggle ZenMode on/off using the switch at the top of the popup
 
 ### Using the Timer
-1. In the main popup, use the slider to select your desired focus duration (1-120 minutes)
-2. Click "Start" to begin your focus session
-3. The timer will count down, and ZenMode will block distracting websites during this time
-4. Use "Reset" to cancel and reset the timer to your selected duration
+1. Choose between Countdown or Stopwatch mode using the tabs
+2. **Countdown Mode:**
+   - The "CURRENT TIME" display shows the remaining time
+   - The "SET DURATION" section lets you configure the timer duration
+   - Use the slider to select your desired focus duration (1-120 minutes)
+   - The blue pill shows your currently selected duration
+3. **Stopwatch Mode:**
+   - The "CURRENT TIME" display shows elapsed time in HH:MM:SS format
+   - Track how long you've been focused without a predetermined end time
+4. **Timer Controls:**
+   - Click "Start" to begin your focus session
+   - Click "Stop" to pause the timer (displays will maintain current time values)
+   - Use "Resume" to continue from where you paused
+   - Click "Reset" to cancel and reset the timer
 
 ### Playing Ambient Sounds
 1. Select a sound type from the dropdown menu
