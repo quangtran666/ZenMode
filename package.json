@@ -4,7 +4,7 @@
   "description": "Chrome extension to enhance focus and productivity",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/fix-html-paths.js",
     "preview": "vite preview"
   },
   "keywords": [

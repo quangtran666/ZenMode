@@ -63,17 +63,86 @@ npm run dev
 npm run build
 ```
 
-## 🌟 Usage
+## 🌟 Detailed Usage Guide
 
-1. Click the ZenMode icon in your Chrome toolbar to open the popup
-2. Toggle ZenMode on/off using the switch
-3. Set a timer for focused work sessions
-4. Go to settings to configure schedules, blocked sites, and more
-5. View your work history in the Work Log
+### Getting Started
+1. After installation, click the ZenMode icon in your Chrome toolbar to open the popup
+2. Toggle ZenMode on/off using the switch at the top of the popup
+
+### Using the Timer
+1. In the main popup, use the slider to select your desired focus duration (1-120 minutes)
+2. Click "Start" to begin your focus session
+3. The timer will count down, and ZenMode will block distracting websites during this time
+4. Use "Reset" to cancel and reset the timer to your selected duration
+
+### Playing Ambient Sounds
+1. Select a sound type from the dropdown menu
+2. Adjust the volume using the slider
+3. Click "Play" to start the sound and "Stop" to end it
+4. For custom sounds, select "Custom URL" and enter a valid audio URL
+
+### Accessing Settings
+1. Click the ⚙️ Settings button at the bottom of the popup
+2. The settings page opens in a new tab with multiple configuration sections:
+
+#### Schedule Settings
+- Toggle "Enable scheduled sessions" to activate ZenMode automatically during specific times
+- Enable "Auto-start ZenMode when Chrome opens" to start focus mode immediately on browser startup
+- Click "Add Time Range" to create a new scheduled time slot
+- For each time range, set:
+  - Start and end times
+  - Days of the week when this schedule should apply
+  - Use the "×" button to remove a time range
+
+#### Website Blocker
+- View and manage your list of blocked websites
+- Enter URL patterns in the input field and click "Add" to block new sites
+- Use "*" for wildcards (e.g., "*facebook.com*" will block all Facebook URLs)
+- Toggle individual sites on/off without removing them
+- Use the "×" button to completely remove a site from your blocklist
+
+#### Motivational Quotes
+- Customize the quotes shown when attempting to access blocked sites
+- Enter new quote text and (optionally) an author, then click "Add"
+- Default quotes are provided but can be removed
+- Your custom quotes will display randomly when you attempt to visit blocked sites
+
+#### Security Settings
+- Enable "Lock ZenMode until timer completes" to prevent early deactivation
+- Enable "Require passcode to exit early" and set a passcode for additional security
+- Alternatively, enable "Use mini puzzle instead of passcode" to require solving a small puzzle to exit focus mode
+
+### Viewing Work History
+1. Click the 📊 Work Log button at the bottom of the popup
+2. View statistics about your focus sessions:
+   - Total sessions completed
+   - Total hours focused
+   - Average session duration
+   - Current day streak
+3. Filter your history by different time periods
+4. See a detailed list of all your focus sessions
+5. Download your work history as a CSV file for external analysis
 
 ## 🔒 Privacy
 
 ZenMode operates completely locally on your browser. No data is sent to any external servers, and your settings and work history are stored only in Chrome's local storage.
+
+## 🔧 Troubleshooting
+
+### Extension Not Working?
+- Make sure Developer mode is enabled in Chrome Extensions
+- Try reloading the extension from the Extensions page
+- If the settings page doesn't open, reload Chrome and try again
+- Clear extension data: go to the extension Details page and click "Clear data"
+
+### Website Blocking Issues
+- Ensure ZenMode is toggled on
+- Check that your URL patterns are correctly formatted (include wildcards as needed)
+- Verify the blocked site's toggle is enabled in Settings
+
+### Timer or Sound Issues
+- If the timer doesn't start, try reloading the extension
+- For sound playback problems, check your browser's sound permissions
 
 ## 📝 License
 

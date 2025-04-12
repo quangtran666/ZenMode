@@ -74,8 +74,45 @@ export const saveState = async (state: ZenModeState): Promise<void> => {
 
 // Load state from Chrome Storage
 export const loadState = async (): Promise<ZenModeState> => {
-  const result = await chrome.storage.local.get('zenModeState');
-  return result.zenModeState || DEFAULT_STATE;
+  try {
+    const result = await chrome.storage.local.get('zenModeState');
+    
+    // Nếu không có dữ liệu, sử dụng state mặc định
+    if (!result || !result.zenModeState) {
+      return DEFAULT_STATE;
+    }
+    
+    // Đảm bảo state có đủ các thuộc tính cần thiết bằng cách merge với DEFAULT_STATE
+    const state: ZenModeState = {
+      ...DEFAULT_STATE,
+      ...result.zenModeState,
+      // Đảm bảo settings luôn đầy đủ
+      settings: {
+        ...DEFAULT_STATE.settings,
+        ...(result.zenModeState.settings || {}),
+        // Đảm bảo các thuộc tính con trong settings cũng đầy đủ
+        schedule: {
+          ...DEFAULT_STATE.settings.schedule,
+          ...(result.zenModeState.settings?.schedule || {})
+        },
+        timer: {
+          ...DEFAULT_STATE.settings.timer,
+          ...(result.zenModeState.settings?.timer || {})
+        },
+        sound: {
+          ...DEFAULT_STATE.settings.sound,
+          ...(result.zenModeState.settings?.sound || {})
+        }
+      },
+      // Đảm bảo history luôn là mảng
+      history: Array.isArray(result.zenModeState.history) ? result.zenModeState.history : []
+    };
+    
+    return state;
+  } catch (error) {
+    console.error('Error loading state:', error);
+    return DEFAULT_STATE;
+  }
 };
 
 // Update settings
