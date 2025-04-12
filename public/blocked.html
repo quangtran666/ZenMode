@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+  <title>Site Blocked - ZenMode</title>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 600px;
+      padding: 2rem;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      margin-bottom: 2rem;
+      justify-content: center;
+    }
+    
+    .logo img {
+      width: 48px;
+      height: 48px;
+      margin-right: 1rem;
+    }
+    
+    .logo h1 {
+      font-size: 24px;
+      font-weight: 500;
+      color: #4a6fa5;
+    }
+    
+    .quote-container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 2rem;
+      margin: 2rem 0;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .quote-text {
+      font-size: 24px;
+      line-height: 1.5;
+      margin-bottom: 1rem;
+      font-weight: 300;
+    }
+    
+    .quote-author {
+      font-size: 16px;
+      color: #757575;
+      font-style: italic;
+    }
+    
+    .message {
+      font-size: 18px;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    
+    .button {
+      background-color: #4a6fa5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .button:hover {
+      background-color: #6d98d5;
+    }
+    
+    .remaining-time {
+      margin-top: 1rem;
+      font-size: 14px;
+      color: #757575;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="icons/icon48.png" alt="ZenMode">
+      <h1>ZenMode</h1>
+    </div>
+    
+    <div class="message">
+      This site is currently blocked to help you stay focused.
+    </div>
+    
+    <div class="quote-container">
+      <p class="quote-text" id="quote-text">Focus on being productive instead of busy.</p>
+      <p class="quote-author" id="quote-author">— Tim Ferriss</p>
+    </div>
+    
+    <button id="back-button" class="button">Go Back</button>
+    
+    <div class="remaining-time" id="remaining-time"></div>
+  </div>
+  
+  <script src="../src/blocked/index.ts" type="module"></script>
+</body>
+</html> 

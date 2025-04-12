@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+  <link rel="stylesheet" href="styles/popup.css">
+  <title>ZenMode</title>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <img src="images/Logo.png" alt="ZenMode" width="48" height="48">
+        <h1>ZenMode</h1>
+      </div>
+      <div class="toggle-container">
+        <label class="switch">
+          <input type="checkbox" id="zenModeToggle">
+          <span class="slider"></span>
+        </label>
+        <span id="status-text">ZenMode is off</span>
+      </div>
+    </header>
+    
+    <div class="timer-section">
+      <h2>Zen Timer</h2>
+      <div class="timer-display">
+        <span id="timer-value">25:00</span>
+      </div>
+      <div class="timer-controls">
+        <input type="range" id="timer-duration" min="1" max="120" value="25">
+        <div class="timer-labels">
+          <span>1 min</span>
+          <span>60 min</span>
+          <span>120 min</span>
+        </div>
+        <div class="buttons">
+          <button id="start-timer" class="primary">Start</button>
+          <button id="reset-timer">Reset</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="sound-section">
+      <h2>Ambient Sounds</h2>
+      <div class="sound-controls">
+        <select id="sound-select">
+          <option value="rain">Rain</option>
+          <option value="white-noise">White Noise</option>
+          <option value="cafe">Café</option>
+          <option value="ocean">Ocean</option>
+          <option value="nature">Nature</option>
+          <option value="fireplace">Fireplace</option>
+          <option value="custom">Custom URL</option>
+        </select>
+        <input type="text" id="custom-sound-url" placeholder="Enter Spotify/YouTube URL" class="hidden">
+        <div class="volume-container">
+          <input type="range" id="volume-control" min="0" max="100" value="50">
+          <div class="volume-icon">🔊</div>
+        </div>
+        <button id="toggle-sound" class="secondary">Play</button>
+      </div>
+    </div>
+    
+    <div class="stats-section">
+      <h2>Today's Progress</h2>
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-value" id="session-count">0</span>
+          <span class="stat-label">Sessions</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="total-time">0:00</span>
+          <span class="stat-label">Total Time</span>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      <button id="show-settings" class="icon-button">⚙️ Settings</button>
+      <button id="view-history" class="icon-button">📊 Work Log</button>
+    </footer>
+  </div>
+  
+  <script src="../src/popup/index.ts" type="module"></script>
+</body>
+</html> 

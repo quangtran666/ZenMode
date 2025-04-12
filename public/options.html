@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+  <link rel="stylesheet" href="styles/options.css">
+  <title>ZenMode Settings</title>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <img src="icons/icon48.png" alt="ZenMode">
+        <h1>ZenMode Settings</h1>
+      </div>
+    </header>
+    
+    <main>
+      <section id="schedule-section" class="settings-section">
+        <h2>Zen Schedule</h2>
+        <div class="form-group">
+          <div class="switch-container">
+            <label class="switch">
+              <input type="checkbox" id="schedule-enabled">
+              <span class="slider"></span>
+            </label>
+            <span>Enable scheduled sessions</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <div class="switch-container">
+            <label class="switch">
+              <input type="checkbox" id="auto-start-chrome">
+              <span class="slider"></span>
+            </label>
+            <span>Auto-start ZenMode when Chrome opens</span>
+          </div>
+        </div>
+        
+        <div id="time-ranges-container">
+          <!-- Time ranges will be added here dynamically -->
+        </div>
+        
+        <button id="add-time-range" class="secondary-button">Add Time Range</button>
+      </section>
+      
+      <section id="blocker-section" class="settings-section">
+        <h2>Website Blocker</h2>
+        <div class="form-description">
+          Add websites you want to block during ZenMode. Use * for wildcards (e.g., *facebook.com*).
+        </div>
+        
+        <div id="blocked-sites-container">
+          <!-- Blocked sites will be added here dynamically -->
+        </div>
+        
+        <div class="form-group">
+          <input type="text" id="new-site-pattern" placeholder="Enter URL pattern (e.g., *facebook.com*)">
+          <button id="add-blocked-site" class="secondary-button">Add</button>
+        </div>
+      </section>
+      
+      <section id="quotes-section" class="settings-section">
+        <h2>Motivational Quotes</h2>
+        <div class="form-description">
+          Customize the quotes shown when a site is blocked.
+        </div>
+        
+        <div id="quotes-container">
+          <!-- Quotes will be added here dynamically -->
+        </div>
+        
+        <div class="form-group">
+          <input type="text" id="new-quote-text" placeholder="Enter quote text">
+          <input type="text" id="new-quote-author" placeholder="Author (optional)">
+          <button id="add-quote" class="secondary-button">Add</button>
+        </div>
+      </section>
+      
+      <section id="passcode-section" class="settings-section">
+        <h2>Security</h2>
+        
+        <div class="form-group">
+          <div class="switch-container">
+            <label class="switch">
+              <input type="checkbox" id="lock-until-complete">
+              <span class="slider"></span>
+            </label>
+            <span>Lock ZenMode until timer completes</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <div class="switch-container">
+            <label class="switch">
+              <input type="checkbox" id="passcode-enabled">
+              <span class="slider"></span>
+            </label>
+            <span>Require passcode to exit early</span>
+          </div>
+        </div>
+        
+        <div class="form-group" id="passcode-form-group">
+          <label for="passcode">Passcode:</label>
+          <input type="password" id="passcode" placeholder="Enter passcode">
+        </div>
+        
+        <div class="form-group">
+          <div class="switch-container">
+            <label class="switch">
+              <input type="checkbox" id="use-puzzle">
+              <span class="slider"></span>
+            </label>
+            <span>Use mini puzzle instead of passcode</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <footer>
+      <button id="save-settings" class="primary-button">Save Settings</button>
+      <button id="reset-settings" class="danger-button">Reset to Default</button>
+    </footer>
+  </div>
+  
+  <!-- Template for time range -->
+  <template id="time-range-template">
+    <div class="time-range">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Time:</label>
+          <input type="time" class="start-time">
+        </div>
+        <div class="form-group">
+          <label>End Time:</label>
+          <input type="time" class="end-time">
+        </div>
+        <button class="remove-button">×</button>
+      </div>
+      <div class="form-group days-group">
+        <label>Days:</label>
+        <div class="days-checkboxes">
+          <label><input type="checkbox" value="monday"> Mon</label>
+          <label><input type="checkbox" value="tuesday"> Tue</label>
+          <label><input type="checkbox" value="wednesday"> Wed</label>
+          <label><input type="checkbox" value="thursday"> Thu</label>
+          <label><input type="checkbox" value="friday"> Fri</label>
+          <label><input type="checkbox" value="saturday"> Sat</label>
+          <label><input type="checkbox" value="sunday"> Sun</label>
+        </div>
+      </div>
+    </div>
+  </template>
+  
+  <!-- Template for blocked site -->
+  <template id="blocked-site-template">
+    <div class="blocked-site">
+      <div class="switch-container">
+        <label class="switch">
+          <input type="checkbox" class="site-enabled">
+          <span class="slider"></span>
+        </label>
+        <span class="site-pattern"></span>
+      </div>
+      <button class="remove-button">×</button>
+    </div>
+  </template>
+  
+  <!-- Template for quote -->
+  <template id="quote-template">
+    <div class="quote">
+      <div class="quote-content">
+        <span class="quote-text"></span>
+        <span class="quote-author"></span>
+      </div>
+      <button class="remove-button">×</button>
+    </div>
+  </template>
+  
+  <script src="../src/options/index.ts" type="module"></script>
+</body>
+</html> 
