@@ -7,6 +7,9 @@ const totalHoursEl = document.getElementById('total-hours') as HTMLDivElement;
 const avgDurationEl = document.getElementById('avg-duration') as HTMLDivElement;
 const streakDaysEl = document.getElementById('streak-days') as HTMLDivElement;
 
+// DOM Elements - Chart
+const timeChartEl = document.getElementById('time-chart') as HTMLDivElement;
+
 // DOM Elements - Filters
 const dateRangeSelect = document.getElementById('date-range') as HTMLSelectElement;
 const startDateGroup = document.getElementById('start-date-group') as HTMLDivElement;
@@ -210,6 +213,9 @@ function updateStats() {
     const streak = calculateStreak(appState.history);
     streakDaysEl.textContent = streak.toString();
   }
+  
+  // Render chart
+  renderChart();
 }
 
 // Calculate the current day streak
@@ -410,6 +416,152 @@ function setupEventListeners() {
   returnToPopupBtn.addEventListener('click', () => {
     window.close();
   });
+}
+
+// Render the time distribution chart
+function renderChart() {
+  // Clear previous chart
+  timeChartEl.innerHTML = '';
+  
+  if (filteredSessions.length === 0) {
+    timeChartEl.innerHTML = '<div class="no-data">No data available for chart.</div>';
+    return;
+  }
+  
+  // Make sure the chart container has position:relative
+  timeChartEl.style.position = 'relative';
+  
+  // Group sessions by day
+  const sessionsByDay = new Map<string, number>(); // day -> total minutes
+  
+  // Get date range for filtered sessions
+  let minDate: Date | null = null;
+  let maxDate: Date | null = null;
+  
+  filteredSessions.forEach(session => {
+    const date = new Date(session.startTime);
+    const dateStr = formatDateForDisplay(date);
+    
+    if (!minDate || date < minDate) minDate = new Date(date);
+    if (!maxDate || date > maxDate) maxDate = new Date(date);
+    
+    // Add session duration in minutes
+    const durationMinutes = session.duration ? Math.floor(session.duration / 60) : 0;
+    
+    if (sessionsByDay.has(dateStr)) {
+      sessionsByDay.set(dateStr, sessionsByDay.get(dateStr)! + durationMinutes);
+    } else {
+      sessionsByDay.set(dateStr, durationMinutes);
+    }
+  });
+  
+  // Fill in missing days in the range
+  if (minDate && maxDate) {
+    const currentDate = new Date(minDate);
+    const endDate = new Date(maxDate); // Make a copy of maxDate
+    
+    while (currentDate <= endDate) {
+      const dateStr = formatDateForDisplay(currentDate);
+      
+      if (!sessionsByDay.has(dateStr)) {
+        sessionsByDay.set(dateStr, 0);
+      }
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+  
+  // Sort dates
+  const sortedDays = Array.from(sessionsByDay.keys()).sort();
+  
+  // Find maximum value for scaling
+  const maxMinutes = Math.max(...Array.from(sessionsByDay.values()));
+  
+  // Create chart container
+  const chartEl = document.createElement('div');
+  chartEl.className = 'chart-bars';
+  chartEl.style.display = 'flex';
+  chartEl.style.alignItems = 'flex-end';
+  chartEl.style.justifyContent = 'space-between';
+  chartEl.style.height = '250px';
+  chartEl.style.padding = '0 10px';
+  
+  // Create bars for each day
+  sortedDays.forEach(day => {
+    const minutes = sessionsByDay.get(day) || 0;
+    const percentage = maxMinutes ? (minutes / maxMinutes) * 100 : 0;
+    
+    // Create bar container
+    const barContainer = document.createElement('div');
+    barContainer.style.display = 'flex';
+    barContainer.style.flexDirection = 'column';
+    barContainer.style.alignItems = 'center';
+    barContainer.style.width = `${100 / sortedDays.length}%`;
+    barContainer.style.maxWidth = '40px';
+    
+    // Create bar
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar';
+    bar.style.height = `${percentage}%`;
+    bar.style.width = '15px';
+    bar.style.backgroundColor = 'var(--primary-color)';
+    bar.style.borderRadius = '2px 2px 0 0';
+    bar.title = `${day}: ${minutes} minutes`;
+    
+    // Create label
+    const label = document.createElement('div');
+    label.className = 'chart-label';
+    label.textContent = day.split('/')[1]; // Show only day part
+    label.style.fontSize = '10px';
+    label.style.marginTop = '5px';
+    label.style.color = 'var(--dark-gray)';
+    
+    // Append elements
+    barContainer.appendChild(bar);
+    barContainer.appendChild(label);
+    chartEl.appendChild(barContainer);
+  });
+  
+  // Append chart to container
+  timeChartEl.appendChild(chartEl);
+  
+  // Add Y-axis labels
+  const yAxis = document.createElement('div');
+  yAxis.className = 'y-axis';
+  yAxis.style.position = 'absolute';
+  yAxis.style.left = '5px';
+  yAxis.style.top = '0';
+  yAxis.style.height = '100%';
+  yAxis.style.display = 'flex';
+  yAxis.style.flexDirection = 'column';
+  yAxis.style.justifyContent = 'space-between';
+  yAxis.style.fontSize = '10px';
+  yAxis.style.color = 'var(--dark-gray)';
+  
+  // Add labels
+  const labels = [
+    { value: maxMinutes, label: `${maxMinutes}m` },
+    { value: maxMinutes * 0.75, label: `${Math.floor(maxMinutes * 0.75)}m` },
+    { value: maxMinutes * 0.5, label: `${Math.floor(maxMinutes * 0.5)}m` },
+    { value: maxMinutes * 0.25, label: `${Math.floor(maxMinutes * 0.25)}m` },
+    { value: 0, label: '0m' }
+  ];
+  
+  labels.forEach(item => {
+    const label = document.createElement('div');
+    label.textContent = item.label;
+    yAxis.appendChild(label);
+  });
+  
+  timeChartEl.appendChild(yAxis);
+}
+
+// Format date for display (MM/DD)
+function formatDateForDisplay(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${month}/${day}`;
 }
 
 // Initialize the history page

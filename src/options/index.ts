@@ -314,18 +314,78 @@ async function resetSettings() {
 
 // Show a message to the user
 function showMessage(message: string, type: 'success' | 'error') {
+  // Create notification container if it doesn't exist
+  let notificationContainer = document.getElementById('notification-container');
+  
+  if (!notificationContainer) {
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.style.position = 'fixed';
+    notificationContainer.style.top = '20px';
+    notificationContainer.style.right = '20px';
+    notificationContainer.style.zIndex = '1000';
+    document.body.appendChild(notificationContainer);
+  }
+  
   // Create message element
   const messageElement = document.createElement('div');
-  messageElement.className = `message ${type}`;
-  messageElement.textContent = message;
+  messageElement.className = `notification ${type}`;
+  messageElement.style.padding = '12px 20px';
+  messageElement.style.borderRadius = '4px';
+  messageElement.style.marginBottom = '10px';
+  messageElement.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+  messageElement.style.display = 'flex';
+  messageElement.style.alignItems = 'center';
+  messageElement.style.minWidth = '250px';
+  messageElement.style.transform = 'translateX(120%)';
+  messageElement.style.transition = 'transform 0.3s ease-in-out';
   
-  // Add to page
-  document.body.appendChild(messageElement);
+  // Set background color based on type
+  if (type === 'success') {
+    messageElement.style.backgroundColor = '#4CAF50';
+    messageElement.style.color = 'white';
+  } else {
+    messageElement.style.backgroundColor = '#f44336';
+    messageElement.style.color = 'white';
+  }
+  
+  // Icon based on message type
+  const icon = document.createElement('span');
+  icon.innerHTML = type === 'success' ? '✓' : '✗';
+  icon.style.marginRight = '10px';
+  icon.style.fontSize = '16px';
+  
+  // Message text
+  const text = document.createElement('span');
+  text.textContent = message;
+  
+  // Add elements to the notification
+  messageElement.appendChild(icon);
+  messageElement.appendChild(text);
+  
+  // Add to notification container
+  notificationContainer.appendChild(messageElement);
+  
+  // Animate in
+  setTimeout(() => {
+    messageElement.style.transform = 'translateX(0)';
+  }, 10);
   
   // Remove after delay
   setTimeout(() => {
-    messageElement.classList.add('hide');
-    setTimeout(() => messageElement.remove(), 500);
+    messageElement.style.transform = 'translateX(120%)';
+    
+    // Remove from DOM after animation completes
+    setTimeout(() => {
+      if (messageElement.parentNode === notificationContainer) {
+        notificationContainer.removeChild(messageElement);
+      }
+      
+      // Remove container if empty
+      if (notificationContainer.childNodes.length === 0) {
+        document.body.removeChild(notificationContainer);
+      }
+    }, 300);
   }, 3000);
 }
 

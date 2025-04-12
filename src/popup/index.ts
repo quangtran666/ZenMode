@@ -6,6 +6,7 @@ const statusText = document.getElementById('status-text') as HTMLSpanElement;
 const timerValue = document.getElementById('timer-value') as HTMLSpanElement;
 const timerDuration = document.getElementById('timer-duration') as HTMLInputElement;
 const startTimerBtn = document.getElementById('start-timer') as HTMLButtonElement;
+const resumeTimerBtn = document.getElementById('resume-timer') as HTMLButtonElement;
 const resetTimerBtn = document.getElementById('reset-timer') as HTMLButtonElement;
 const soundSelect = document.getElementById('sound-select') as HTMLSelectElement;
 const customSoundUrl = document.getElementById('custom-sound-url') as HTMLInputElement;
@@ -19,6 +20,7 @@ const viewHistoryBtn = document.getElementById('view-history') as HTMLButtonElem
 // Timer variables
 let timer: number | null = null;
 let remainingTime = 0;
+let pausedTime = 0; // Store remaining time when paused
 let appState: ZenModeState | null = null;
 
 // Initialize popup
@@ -86,15 +88,28 @@ function updateTimerDisplay(timerSettings: ZenTimer) {
       displayTime(remainingTime);
       startTimer();
       startTimerBtn.textContent = 'Stop';
+      startTimerBtn.classList.remove('hidden');
+      resumeTimerBtn.classList.add('hidden');
     } else {
       // Timer has ended
       displayTime(0);
       startTimerBtn.textContent = 'Start';
+      startTimerBtn.classList.remove('hidden');
+      resumeTimerBtn.classList.add('hidden');
     }
   } else {
     // Display timer duration when not active
     displayTime(timerSettings.duration * 60);
     startTimerBtn.textContent = 'Start';
+    
+    // Show Resume button if we have a paused timer
+    if (pausedTime > 0) {
+      startTimerBtn.classList.add('hidden');
+      resumeTimerBtn.classList.remove('hidden');
+    } else {
+      startTimerBtn.classList.remove('hidden');
+      resumeTimerBtn.classList.add('hidden');
+    }
   }
 }
 
@@ -164,18 +179,98 @@ function updateStats() {
 
 // Setup event listeners
 function setupEventListeners() {
-  // ZenMode toggle
-  zenModeToggle.addEventListener('change', () => {
-    chrome.runtime.sendMessage({ 
+  // ZenMode toggle - completely fresh approach
+  const switchEl = document.querySelector('.switch') as HTMLLabelElement;
+  
+  if (switchEl) {
+    // Clone and replace to remove any existing listeners
+    const newSwitch = switchEl.cloneNode(true) as HTMLLabelElement;
+    switchEl.parentNode?.replaceChild(newSwitch, switchEl);
+    
+    // Get the new checkbox reference but don't try to reassign zenModeToggle
+    const newCheckbox = newSwitch.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    
+    // Update our zenModeToggle reference for future use by using newCheckbox directly in functions
+    // Create our custom click handler on the switch
+    newSwitch.onclick = function(event) {
+      // Prevent default toggle behavior
+      event.preventDefault();
+      event.stopPropagation();
+      
+      console.log("Switch clicked");
+      
+      if (!appState) {
+        console.error("Cannot toggle: App state is null");
+        return;
+      }
+      
+      // Get current state from appState (the source of truth)
+      const currentState = appState.isActive;
+      
+      // If currently on, need to verify before turning off
+      if (currentState) {
+        console.log("Currently ON, attempting to turn OFF");
+        
+        // Check if passcode verification is needed
+        if (appState.settings.passcodeEnabled) {
+          const passcode = prompt('Enter passcode to exit ZenMode:');
+          if (passcode !== appState.settings.passcode) {
+            alert('Incorrect passcode. Stay focused!');
+            return; // Keep ZenMode on
+          }
+        } 
+        // Check if puzzle verification is needed
+        else if (appState.settings.usePuzzleInsteadOfPasscode) {
+          const num1 = Math.floor(Math.random() * 20) + 1;
+          const num2 = Math.floor(Math.random() * 20) + 1;
+          const operation = Math.random() > 0.5 ? '+' : '*';
+          const correctAnswer = operation === '+' ? num1 + num2 : num1 * num2;
+          
+          const userAnswer = prompt(`Solve this puzzle to exit ZenMode:\n${num1} ${operation} ${num2} = ?`);
+          if (!userAnswer || parseInt(userAnswer) !== correctAnswer) {
+            alert('Incorrect answer. Stay focused!');
+            return; // Keep ZenMode on
+          }
+        }
+        
+        // Passed verification, turn off
+        setZenModeState(false, newCheckbox);
+      } else {
+        // Turn on (no verification needed)
+        console.log("Currently OFF, turning ON");
+        setZenModeState(true, newCheckbox);
+      }
+      
+      return false; // Prevent default
+    };
+  }
+  
+  // Helper function to set ZenMode state
+  function setZenModeState(state: boolean, checkboxEl: HTMLInputElement) {
+    console.log(`Setting ZenMode to: ${state}`);
+    
+    // Update UI first
+    checkboxEl.checked = state;
+    statusText.textContent = state ? 'ZenMode is on' : 'ZenMode is off';
+    
+    // Then send message to update backend
+    chrome.runtime.sendMessage({
       type: 'TOGGLE_ZEN_MODE',
-      payload: { isActive: zenModeToggle.checked }
+      payload: { isActive: state }
     }, (response) => {
       if (response && response.success) {
+        // Update local state
         appState = response.state;
         updateUI();
+        console.log(`ZenMode ${state ? 'activated' : 'deactivated'} successfully`);
+      } else {
+        // Revert UI on error
+        console.error("Failed to update ZenMode state");
+        checkboxEl.checked = !state;
+        statusText.textContent = !state ? 'ZenMode is on' : 'ZenMode is off';
       }
     });
-  });
+  }
   
   // Timer duration slider
   timerDuration.addEventListener('input', () => {
@@ -204,59 +299,92 @@ function setupEventListeners() {
     const isTimerActive = appState.settings.timer.isActive;
     
     if (isTimerActive) {
-      // Stop timer
-      chrome.runtime.sendMessage({ 
-        type: 'UPDATE_SETTINGS',
-        payload: { 
-          timer: { 
-            isActive: false,
-            startTime: undefined,
-            endTime: undefined
-          }
-        }
-      }, (response) => {
-        if (response && response.success) {
-          appState = response.state;
-          
-          if (timer) {
-            clearInterval(timer);
-            timer = null;
-          }
-          
-          startTimerBtn.textContent = 'Start';
-          updateUI();
-        }
-      });
+      // Stop timer and save remaining time
+      pausedTime = remainingTime;
+      stopTimer();
     } else {
-      // Start timer
+      // Start a new timer
+      pausedTime = 0; // Reset paused time when starting fresh
       const duration = parseInt(timerDuration.value);
       const now = Date.now();
       const endTime = now + (duration * 60 * 1000);
       
-      chrome.runtime.sendMessage({ 
-        type: 'UPDATE_SETTINGS',
-        payload: { 
-          timer: { 
-            isActive: true,
-            duration,
-            startTime: now,
-            endTime
-          }
-        }
-      }, (response) => {
-        if (response && response.success) {
-          appState = response.state;
-          remainingTime = duration * 60;
-          startTimer();
-          startTimerBtn.textContent = 'Stop';
-        }
-      });
+      startNewTimer(duration, now, endTime);
     }
   });
+  
+  // Resume timer button
+  resumeTimerBtn.addEventListener('click', () => {
+    if (!appState || pausedTime <= 0) return;
+    
+    // Calculate new end time based on remaining time
+    const now = Date.now();
+    const endTime = now + (pausedTime * 1000);
+    
+    // Use the original duration from settings to maintain context
+    const duration = appState.settings.timer.duration;
+    
+    startNewTimer(duration, now, endTime);
+    pausedTime = 0; // Reset paused time after resuming
+  });
+  
+  // Function to start a new timer
+  function startNewTimer(duration: number, startTime: number, endTime: number) {
+    chrome.runtime.sendMessage({ 
+      type: 'UPDATE_SETTINGS',
+      payload: { 
+        timer: { 
+          isActive: true,
+          duration,
+          startTime,
+          endTime
+        }
+      }
+    }, (response) => {
+      if (response && response.success) {
+        appState = response.state;
+        remainingTime = Math.floor((endTime - Date.now()) / 1000);
+        startTimer();
+        startTimerBtn.textContent = 'Stop';
+        startTimerBtn.classList.remove('hidden');
+        resumeTimerBtn.classList.add('hidden');
+      }
+    });
+  }
+  
+  // Function to stop the timer
+  function stopTimer() {
+    chrome.runtime.sendMessage({ 
+      type: 'UPDATE_SETTINGS',
+      payload: { 
+        timer: { 
+          isActive: false,
+          startTime: undefined,
+          endTime: undefined
+        }
+      }
+    }, (response) => {
+      if (response && response.success) {
+        appState = response.state;
+        
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        
+        startTimerBtn.classList.add('hidden');
+        resumeTimerBtn.classList.remove('hidden');
+        updateUI();
+      }
+    });
+  }
   
   // Reset timer button
   resetTimerBtn.addEventListener('click', () => {
     if (!appState) return;
+    
+    // Reset paused time
+    pausedTime = 0;
     
     // Stop and reset timer
     chrome.runtime.sendMessage({ 
@@ -280,6 +408,8 @@ function setupEventListeners() {
         const duration = parseInt(timerDuration.value);
         displayTime(duration * 60);
         startTimerBtn.textContent = 'Start';
+        startTimerBtn.classList.remove('hidden');
+        resumeTimerBtn.classList.add('hidden');
       }
     });
   });
