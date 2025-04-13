@@ -1,11 +1,12 @@
 import { Message, MotivationalQuote } from '../types';
+import { logger } from '../utils/logger';
 
 let audioElement: HTMLAudioElement | null = null;
 let zenOverlay: HTMLDivElement | null = null;
 
 // Initialize content script
 function initialize() {
-  console.log('ZenMode content script initialized');
+  logger.log('ZenMode content script initialized');
   
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
@@ -60,7 +61,7 @@ function playSound(soundType: string = 'rain', volume: number = 50, customUrl?: 
   // Add to page and play
   document.body.appendChild(audioElement);
   audioElement.play().catch(err => {
-    console.error('Failed to play sound:', err);
+    logger.error('Failed to play sound:', err);
   });
 }
 

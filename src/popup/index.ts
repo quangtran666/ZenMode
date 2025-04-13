@@ -1,4 +1,5 @@
 import { ZenModeState, ZenTimer, AmbientSound } from '../types';
+import { logger } from '../utils/logger';
 
 // DOM Elements
 const zenModeToggle = document.getElementById('zenModeToggle') as HTMLInputElement;
@@ -39,12 +40,12 @@ function startCountdownTimer(initialRemainingTime: number) {
   
   // Set initial remaining time
   remainingTime = initialRemainingTime;
-  console.log(`Starting COUNTDOWN timer with ${remainingTime} seconds remaining`);
+  logger.log(`Starting COUNTDOWN timer with ${remainingTime} seconds remaining`);
   
   // Create a countdown-specific timer
   timer = setInterval(() => {
     // Debug log
-    console.log(`COUNTDOWN: remainingTime = ${remainingTime}`);
+    logger.log(`COUNTDOWN: remainingTime = ${remainingTime}`);
     
     if (remainingTime > 0) {
       remainingTime--;
@@ -83,12 +84,12 @@ function startStopwatchTimer(initialElapsedTime: number) {
   
   // Set initial elapsed time
   elapsedTime = initialElapsedTime;
-  console.log(`Starting STOPWATCH timer with ${elapsedTime} seconds elapsed`);
+  logger.log(`Starting STOPWATCH timer with ${elapsedTime} seconds elapsed`);
   
   // Create a stopwatch-specific timer
   timer = setInterval(() => {
     // Debug log
-    console.log(`STOPWATCH: elapsedTime = ${elapsedTime}`);
+    logger.log(`STOPWATCH: elapsedTime = ${elapsedTime}`);
     
     // Increment elapsed time
     elapsedTime++;
@@ -98,7 +99,7 @@ function startStopwatchTimer(initialElapsedTime: number) {
 
 // Start timer based on mode
 function startTimer(mode: 'countdown' | 'stopwatch') {
-  console.log(`startTimer called with mode: ${mode}`);
+  logger.log(`startTimer called with mode: ${mode}`);
   
   if (mode === 'countdown') {
     startCountdownTimer(remainingTime);
@@ -112,7 +113,7 @@ function startNewTimer(duration: number, startTime: number, endTime: number) {
   if (!appState) return;
 
   const timerMode = appState.settings.timer.timerMode || 'countdown';
-  console.log(`Starting new timer: mode=${timerMode}, duration=${duration}`);
+  logger.log(`Starting new timer: mode=${timerMode}, duration=${duration}`);
 
   const payload: Partial<ZenTimer> = {
     isActive: true,
@@ -138,11 +139,11 @@ function startNewTimer(duration: number, startTime: number, endTime: number) {
       if (appState && appState.settings.timer.timerMode === 'countdown') {
         // Calculate the correct remaining time for countdown
         remainingTime = Math.floor((endTime - Date.now()) / 1000);
-        console.log(`Setting remainingTime for countdown: ${remainingTime} seconds`);
+        logger.log(`Setting remainingTime for countdown: ${remainingTime} seconds`);
         
         // Ensure it's a positive value
         if (remainingTime <= 0) {
-          console.error('Invalid remaining time calculated. Using duration instead.');
+          logger.error('Invalid remaining time calculated. Using duration instead.');
           remainingTime = duration * 60;
         }
         
@@ -151,7 +152,7 @@ function startNewTimer(duration: number, startTime: number, endTime: number) {
       } else if (appState) {
         // Reset and start the stopwatch with specific function
         elapsedTime = 0;
-        console.log('Setting elapsedTime for stopwatch: 0 seconds');
+        logger.log('Setting elapsedTime for stopwatch: 0 seconds');
         startStopwatchTimer(elapsedTime);
       }
       
@@ -174,7 +175,7 @@ function updateDurationSlider(duration: number) {
     sliderValue.textContent = `${duration} min`;
   }
   
-  console.log(`Updated slider to ${duration} minutes (timer display unchanged)`);
+  logger.log(`Updated slider to ${duration} minutes (timer display unchanged)`);
 }
 
 // Initialize popup
@@ -196,7 +197,7 @@ async function initialize() {
     // Dynamic way to access Logo.png using chrome.runtime.getURL
     const logoUrl = chrome.runtime.getURL('images/Logo.png');
     logoImage.src = logoUrl;
-    console.log('Logo image set dynamically:', logoUrl);
+    logger.log('Logo image set dynamically:', logoUrl);
   }
 }
 
@@ -315,14 +316,14 @@ function updateUI() {
 function updateTimerDisplay(timerSettings: ZenTimer) {
   // Kiểm tra xem timerSettings có tồn tại không
   if (!timerSettings) {
-    console.error('timerSettings is undefined');
+    logger.error('timerSettings is undefined');
     return;
   }
 
   try {
     // Sử dụng giá trị mặc định cho timerMode nếu undefined
     const timerMode = timerSettings.timerMode || 'countdown';
-    console.log(`updateTimerDisplay: mode=${timerMode}, isActive=${timerSettings.isActive}`);
+    logger.log(`updateTimerDisplay: mode=${timerMode}, isActive=${timerSettings.isActive}`);
     
     // First, update the tabs UI based on timer mode
     if (timerMode === 'countdown') {
@@ -368,7 +369,7 @@ function updateTimerDisplay(timerSettings: ZenTimer) {
         if (now < timerSettings.endTime) {
           // Tính thời gian còn lại
           remainingTime = Math.floor((timerSettings.endTime - now) / 1000);
-          console.log(`updateTimerDisplay: countdown active, remainingTime=${remainingTime}`);
+          logger.log(`updateTimerDisplay: countdown active, remainingTime=${remainingTime}`);
           
           // Hiển thị thời gian
           displayTime(remainingTime);
@@ -392,7 +393,7 @@ function updateTimerDisplay(timerSettings: ZenTimer) {
       } else if (timerMode === 'stopwatch') {
         // Stopwatch mode - calculate elapsed time
         elapsedTime = Math.floor((now - timerSettings.startTime) / 1000);
-        console.log(`updateTimerDisplay: stopwatch active, elapsedTime=${elapsedTime}`);
+        logger.log(`updateTimerDisplay: stopwatch active, elapsedTime=${elapsedTime}`);
         
         // Hiển thị thời gian
         displayTime(elapsedTime, true);
@@ -412,7 +413,7 @@ function updateTimerDisplay(timerSettings: ZenTimer) {
         // If we have paused time, show that instead of the default duration
         if (pausedTime > 0) {
           displayTime(pausedTime);
-          console.log(`Showing paused countdown time: ${pausedTime} seconds`);
+          logger.log(`Showing paused countdown time: ${pausedTime} seconds`);
         } else {
           // Display default timer duration when not active and not paused
           const duration = timerSettings.duration !== undefined ? timerSettings.duration : 25;
@@ -422,7 +423,7 @@ function updateTimerDisplay(timerSettings: ZenTimer) {
         // For stopwatch, show paused elapsed time or 00:00:00
         if (pausedTime > 0) {
           displayTime(pausedTime, true);
-          console.log(`Showing paused stopwatch time: ${pausedTime} seconds`);
+          logger.log(`Showing paused stopwatch time: ${pausedTime} seconds`);
         } else {
           displayTime(0, true);
         }
@@ -440,7 +441,7 @@ function updateTimerDisplay(timerSettings: ZenTimer) {
       }
     }
   } catch (error) {
-    console.error('Error updating timer display:', error);
+    logger.error('Error updating timer display:', error);
   }
 }
 
@@ -463,7 +464,7 @@ function displayTime(seconds: number, isStopwatch: boolean = false) {
     timerValue.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
   
-  console.log(`Updated timer display to ${timerValue.textContent} (slider value unchanged)`);
+  logger.log(`Updated timer display to ${timerValue.textContent} (slider value unchanged)`);
 }
 
 // Update stats display
@@ -520,10 +521,10 @@ function setupEventListeners() {
       event.preventDefault();
       event.stopPropagation();
       
-      console.log("Switch clicked");
+      logger.log("Switch clicked");
       
       if (!appState) {
-        console.error("Cannot toggle: App state is null");
+        logger.error("Cannot toggle: App state is null");
         return;
       }
       
@@ -537,10 +538,10 @@ function setupEventListeners() {
       event.preventDefault();
       event.stopPropagation();
       
-      console.log("Checkbox changed directly");
+      logger.log("Checkbox changed directly");
       
       if (!appState) {
-        console.error("Cannot toggle: App state is null");
+        logger.error("Cannot toggle: App state is null");
         return;
       }
       
@@ -556,10 +557,10 @@ function setupEventListeners() {
   function handleZenModeToggle(currentState: boolean) {
     // If currently on, need to verify before turning off
     if (currentState) {
-      console.log("Currently ON, attempting to turn OFF");
+      logger.log("Currently ON, attempting to turn OFF");
       
       if (!appState) {
-        console.error("State is null when attempting to toggle ZenMode");
+        logger.error("State is null when attempting to toggle ZenMode");
         return;
       }
       
@@ -589,14 +590,14 @@ function setupEventListeners() {
       setZenModeState(false);
     } else {
       // Turn on (no verification needed)
-      console.log("Currently OFF, turning ON");
+      logger.log("Currently OFF, turning ON");
       setZenModeState(true);
     }
   }
   
   // Helper function to set ZenMode state
   function setZenModeState(state: boolean) {
-    console.log(`Setting ZenMode to: ${state}`);
+    logger.log(`Setting ZenMode to: ${state}`);
     
     // Show loading state
     statusText.textContent = state ? 'Turning on...' : 'Turning off...';
@@ -625,13 +626,13 @@ function setupEventListeners() {
             switchEl.classList.remove('state-changed');
           }, 300);
           
-          console.log(`ZenMode is now: ${actualState ? 'ON' : 'OFF'}`);
+          logger.log(`ZenMode is now: ${actualState ? 'ON' : 'OFF'}`);
         }
         
         updateUI();
       } else {
         // Revert UI on error
-        console.error("Failed to update ZenMode state:", response);
+        logger.error("Failed to update ZenMode state:", response);
         toggleCheckbox.checked = !state;
         statusText.textContent = !state ? 'ZenMode is on' : 'ZenMode is off';
       }
@@ -682,16 +683,16 @@ function setupEventListeners() {
     const isTimerActive = appState.settings.timer.isActive;
     const timerMode = appState.settings.timer.timerMode || 'countdown';
     
-    console.log(`Timer button clicked: isActive=${isTimerActive}, mode=${timerMode}`);
+    logger.log(`Timer button clicked: isActive=${isTimerActive}, mode=${timerMode}`);
     
     if (isTimerActive) {
       // Stop timer and save remaining time
       if (timerMode === 'countdown') {
-        console.log(`Stopping countdown timer with remainingTime=${remainingTime}`);
+        logger.log(`Stopping countdown timer with remainingTime=${remainingTime}`);
         pausedTime = remainingTime;
       } else {
         // For stopwatch, store elapsed time
-        console.log(`Stopping stopwatch with elapsedTime=${elapsedTime}`);
+        logger.log(`Stopping stopwatch with elapsedTime=${elapsedTime}`);
         pausedTime = elapsedTime;
       }
       stopTimer();
@@ -703,19 +704,19 @@ function setupEventListeners() {
         // Countdown mode
         pausedTime = 0; // Reset paused time when starting fresh
         const duration = parseInt(timerDuration.value);
-        console.log(`Starting countdown timer with duration=${duration} minutes`);
+        logger.log(`Starting countdown timer with duration=${duration} minutes`);
         
         // Calculate endTime
         const endTime = now + (duration * 60 * 1000);
         
         // Set the correct initial remainingTime
         remainingTime = duration * 60;
-        console.log(`Setting initial remainingTime to ${remainingTime} seconds`);
+        logger.log(`Setting initial remainingTime to ${remainingTime} seconds`);
         
         startNewTimer(duration, now, endTime);
       } else {
         // Stopwatch mode
-        console.log(`Starting stopwatch timer`);
+        logger.log(`Starting stopwatch timer`);
         elapsedTime = 0; // Reset elapsed time for fresh start
         startNewTimer(0, now, 0); // For stopwatch, duration and endTime aren't used
       }
@@ -729,14 +730,14 @@ function setupEventListeners() {
     const now = Date.now();
     const timerMode = appState.settings.timer.timerMode || 'countdown';
     
-    console.log(`Resuming timer: mode=${timerMode}, pausedTime=${pausedTime}`);
+    logger.log(`Resuming timer: mode=${timerMode}, pausedTime=${pausedTime}`);
     
     if (timerMode === 'countdown') {
       // For countdown, calculate new end time based on remaining time
       const endTime = now + (pausedTime * 1000);
       // Use the original duration from settings
       const duration = appState.settings.timer.duration || 25;
-      console.log(`Countdown resume: duration=${duration}, remainingTime=${pausedTime}`);
+      logger.log(`Countdown resume: duration=${duration}, remainingTime=${pausedTime}`);
       
       // Đảm bảo remainingTime được set đúng từ pausedTime trước khi gọi startNewTimer
       remainingTime = pausedTime;
@@ -744,7 +745,7 @@ function setupEventListeners() {
       startNewTimer(duration, now, endTime);
     } else {
       // For stopwatch, we continue from the stored elapsed time
-      console.log(`Stopwatch resume: elapsedTime=${pausedTime}`);
+      logger.log(`Stopwatch resume: elapsedTime=${pausedTime}`);
       
       // Đảm bảo elapsedTime được set đúng từ pausedTime
       elapsedTime = pausedTime;
@@ -769,11 +770,11 @@ function setupEventListeners() {
     if (currentTimerMode === 'countdown') {
       // Save the current remaining time for countdown
       pausedTime = remainingTime;
-      console.log(`Saving remaining time: ${pausedTime} seconds`);
+      logger.log(`Saving remaining time: ${pausedTime} seconds`);
     } else {
       // Save the current elapsed time for stopwatch
       pausedTime = elapsedTime;
-      console.log(`Saving elapsed time: ${pausedTime} seconds`);
+      logger.log(`Saving elapsed time: ${pausedTime} seconds`);
     }
 
     // Nếu là chế độ stopwatch và đang có timer chạy, cần ghi nhận thời gian đã trôi qua
@@ -1014,7 +1015,7 @@ function setupEventListeners() {
         });
       } else {
         // Error occurred
-        console.error('Error controlling sound');
+        logger.error('Error controlling sound');
         alert('There was an error playing the selected sound');
         toggleSoundBtn.textContent = 'Play';
         toggleSoundBtn.disabled = false;
@@ -1038,7 +1039,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initialize();
   
   // Thêm event listener cho các tab
-  console.log("Adding tab event listeners");
+  logger.log("Adding tab event listeners");
   
   // Timer mode tabs
   if (countdownTab && stopwatchTab) {
@@ -1047,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Đảm bảo các phần tử UI đã được định nghĩa
       if (!countdownControls || !stopwatchControls) {
-        console.error('countdownControls or stopwatchControls not found');
+        logger.error('countdownControls or stopwatchControls not found');
         return;
       }
       
@@ -1118,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Đảm bảo các phần tử UI đã được định nghĩa
       if (!countdownControls || !stopwatchControls) {
-        console.error('countdownControls or stopwatchControls not found');
+        logger.error('countdownControls or stopwatchControls not found');
         return;
       }
       
@@ -1165,6 +1166,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   } else {
-    console.error('Timer tabs not found');
+    logger.error('Timer tabs not found');
   }
 }); 

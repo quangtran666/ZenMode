@@ -7,6 +7,7 @@ import {
   DayOfWeek
 } from '../types';
 import { DEFAULT_SETTINGS, loadState, updateSettings } from '../utils/storage';
+import { logger, initLogger } from '../utils/logger';
 
 // State management
 let appState: ZenModeState | null = null;
@@ -42,10 +43,20 @@ const usePuzzle = document.getElementById('use-puzzle') as HTMLInputElement;
 const saveSettingsBtn = document.getElementById('save-settings') as HTMLButtonElement;
 const resetSettingsBtn = document.getElementById('reset-settings') as HTMLButtonElement;
 
+// DOM Elements - Developer Settings
+const loggerEnabled = document.getElementById('logger-enabled') as HTMLInputElement;
+const logLevelDebug = document.getElementById('log-level-debug') as HTMLInputElement;
+const logLevelInfo = document.getElementById('log-level-info') as HTMLInputElement;
+const logLevelWarn = document.getElementById('log-level-warn') as HTMLInputElement;
+const logLevelError = document.getElementById('log-level-error') as HTMLInputElement;
+
 // Initialize options page
 async function initialize() {
   // Load current state
   appState = await loadState();
+  
+  // Initialize logger
+  await initLogger();
   
   // Populate UI with settings
   populateSettings();
@@ -86,6 +97,14 @@ function populateSettings() {
   
   // Show/hide passcode input based on enabled state
   togglePasscodeVisibility();
+  
+  // Developer settings
+  const loggerState = logger.getState();
+  loggerEnabled.checked = loggerState.enabled;
+  logLevelDebug.checked = loggerState.enabledLevels.debug;
+  logLevelInfo.checked = loggerState.enabledLevels.info;
+  logLevelWarn.checked = loggerState.enabledLevels.warn;
+  logLevelError.checked = loggerState.enabledLevels.error;
 }
 
 // Add a time range to the UI
@@ -270,22 +289,42 @@ function collectSettings(): ZenModeSettings {
   };
 }
 
+// Save logger settings
+async function saveLoggerSettings() {
+  try {
+    await logger.enableLogging(loggerEnabled.checked);
+    
+    await logger.setLogLevel('debug', logLevelDebug.checked);
+    await logger.setLogLevel('info', logLevelInfo.checked);
+    await logger.setLogLevel('warn', logLevelWarn.checked);
+    await logger.setLogLevel('error', logLevelError.checked);
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving logger settings:', error);
+    return false;
+  }
+}
+
 // Save settings
 async function saveSettings() {
   if (!appState) return;
   
-  const newSettings = collectSettings();
-  
   try {
-    // Update settings
+    // Collect settings from UI
+    const newSettings = collectSettings();
+    
+    // Update state
     await updateSettings(newSettings);
     
+    // Save logger settings
+    await saveLoggerSettings();
+    
     // Show success message
-    showMessage('Settings saved successfully!', 'success');
+    showMessage('Settings saved successfully', 'success');
   } catch (error) {
-    // Show error message
-    showMessage('Failed to save settings.', 'error');
     console.error('Error saving settings:', error);
+    showMessage('Error saving settings', 'error');
   }
 }
 
@@ -426,6 +465,15 @@ function setupEventListeners() {
   
   // Reset settings button
   resetSettingsBtn.addEventListener('click', resetSettings);
+  
+  // Logger settings
+  loggerEnabled.addEventListener('change', () => {
+    const isEnabled = loggerEnabled.checked;
+    logLevelDebug.disabled = !isEnabled;
+    logLevelInfo.disabled = !isEnabled;
+    logLevelWarn.disabled = !isEnabled;
+    logLevelError.disabled = !isEnabled;
+  });
 }
 
 // Initialize when DOM is loaded

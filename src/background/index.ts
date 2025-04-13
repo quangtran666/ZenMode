@@ -1,5 +1,6 @@
 import { Message, BlockedSite, ZenModeState, AmbientSoundType } from '../types';
 import { loadState, toggleZenMode, updateSettings, saveState } from '../utils/storage';
+import { logger } from '../utils/logger';
 
 // Audio player for ambient sounds
 let audioPlayer: HTMLAudioElement | null = null;
@@ -16,14 +17,20 @@ type OffscreenReason = chrome.offscreen.Reason;
 
 // Initialize extension when installed
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('ZenMode extension installed');
-  
-  // Load initial state
-  const state = await loadState();
-  
-  // Setup alarms for scheduled zen sessions
-  if (state.settings.schedule.enabled) {
-    setupScheduledSessions(state);
+  try {
+    // Tắt logging ngay lập tức
+    await logger.enableLogging(false);
+    logger.log('ZenMode extension installed');
+
+    // Load initial state
+    const state = await loadState();
+    
+    // Setup alarms for scheduled zen sessions
+    if (state.settings.schedule.enabled) {
+      setupScheduledSessions(state);
+    }
+  } catch (e) {
+    console.error('Lỗi khi tắt logging:', e);
   }
 });
 
@@ -158,9 +165,9 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     try {
       switch (message.type) {
         case 'TOGGLE_ZEN_MODE':
-          console.log('Toggling ZenMode with payload:', message.payload);
+          logger.log('Toggling ZenMode with payload:', message.payload);
           const newState = await toggleZenMode(message.payload?.isActive);
-          console.log('New ZenMode state:', newState.isActive);
+          logger.log('New ZenMode state:', newState.isActive);
           sendResponse({ success: true, state: newState });
           break;
         
@@ -256,7 +263,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
           sendResponse({ success: false, error: 'Unknown message type' });
       }
     } catch (error) {
-      console.error('Error handling message:', error);
+      logger.error('Error handling message:', error);
       sendResponse({ success: false, error: `Error: ${error}` });
     }
   })();
@@ -274,7 +281,7 @@ async function isOffscreenReady(): Promise<boolean> {
     const tabs = await chrome.tabs.query({});
     return true; // If we can query tabs, assume the document is ready
   } catch (e) {
-    console.error('Error checking offscreen document status:', e);
+    logger.error('Error checking offscreen document status:', e);
     return false;
   }
 }
@@ -304,7 +311,7 @@ async function playSound(soundType: AmbientSoundType, volume: number, customUrl?
             await chrome.offscreen.closeDocument();
             hasOffscreenDocument = false;
           } catch (e) {
-            console.log('No existing offscreen document to close');
+            logger.log('No existing offscreen document to close');
           }
         }
 
@@ -318,9 +325,9 @@ async function playSound(soundType: AmbientSoundType, volume: number, customUrl?
         hasOffscreenDocument = true;
         
         // Don't need to send a message - offscreen document will auto-play based on URL params
-        console.log('Created offscreen document for audio playback');
+        logger.log('Created offscreen document for audio playback');
       } catch (e: any) {
-        console.error('Error with offscreen document:', e);
+        logger.error('Error with offscreen document:', e);
         return useSimpleAudioPlayback(audioSrc, volume);
       }
     } else {
@@ -333,7 +340,7 @@ async function playSound(soundType: AmbientSoundType, volume: number, customUrl?
     
     return true;
   } catch (error) {
-    console.error('Error in playSound:', error);
+    logger.error('Error in playSound:', error);
     return false;
   }
 }
@@ -354,13 +361,13 @@ function useSimpleAudioPlayback(audioSrc: string, volume: number): boolean {
     
     // Play audio
     audioPlayer.play().catch(error => {
-      console.error('Error playing audio with simple playback:', error);
+      logger.error('Error playing audio with simple playback:', error);
       return false;
     });
     
     return true;
   } catch (error) {
-    console.error('Error in useSimpleAudioPlayback:', error);
+    logger.error('Error in useSimpleAudioPlayback:', error);
     return false;
   }
 }
@@ -373,7 +380,7 @@ async function stopSound() {
       await chrome.offscreen.closeDocument();
       hasOffscreenDocument = false;
     } catch (e) {
-      console.error('Error closing offscreen document:', e);
+      logger.error('Error closing offscreen document:', e);
     }
   } else if (audioPlayer) {
     // Stop simple audio
@@ -382,7 +389,7 @@ async function stopSound() {
       audioPlayer.currentTime = 0;
       audioPlayer = null;
     } catch (e) {
-      console.error('Error stopping simple audio playback:', e);
+      logger.error('Error stopping simple audio playback:', e);
     }
   }
   
